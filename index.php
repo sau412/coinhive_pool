@@ -126,7 +126,7 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                         $user_hashes=get_user_balance($user_uid);
                         $hashes_mined=db_query_to_variable("SELECT `mined` FROM `users` WHERE `uid`='$user_uid_escaped'");
                         $hashes_withdrawn=db_query_to_variable("SELECT `withdrawn` FROM `users` WHERE `uid`='$user_uid_escaped'");
-                        $hashes_bonus=db_query_to_variable("SELECT SUM(`hashes`) FROM `sessions` WHERE `user_uid`='$user_uid_escaped'");
+                        $hashes_bonus=db_query_to_variable("SELECT `bonus` FROM `users` WHERE `uid`='$user_uid_escaped'");
                         $hashes_ref=db_query_to_variable("SELECT SUM(`mined`) FROM `users` WHERE `ref_id`='$user_uid_escaped'");
                         $hashes_ref=floor($hashes_ref*$hashes_ref_rate);
 
