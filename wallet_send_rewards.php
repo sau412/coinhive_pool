@@ -103,7 +103,7 @@ if(count($payout_data_array)==0) {
 // Unlock wallet
 if(wallet_rpc_unlock_wallet() == FALSE) {
         echo "Unlock wallet error\n";
-        auth_log("Unlock wallet error");
+        write_log("Unlock wallet error");
         die();
 }
 
@@ -153,7 +153,7 @@ foreach($payout_data_array as $payout_data) {
 // Lock wallet
 if(wallet_rpc_lock_wallet() == FALSE) {
         echo "Lock wallet error\n";
-        auth_log("Lock wallet error");
+        write_log("Lock wallet error");
         die();
 }
 
