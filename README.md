@@ -8,6 +8,11 @@ Online mining pool based on coinhive miner.
 * php5 or php7
 * jQuery 3.1.1
 
+## Installation
+* Copy files to web folder
+* Import DB scheme from base.sql
+* Write your settings in settings.php
+
 ## How it works
 Users mine for monero with coinhive script. Site aggregates statistics (hashes) and allow payouts in several coins.
 
