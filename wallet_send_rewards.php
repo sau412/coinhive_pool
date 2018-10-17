@@ -47,7 +47,7 @@ function wallet_rpc_get_balance() {
 function wallet_rpc_unlock_wallet() {
         global $wallet_rpc_wallet_passphrase;
         $query='{"id":1,"method":"walletpassphrase","params":["'.$wallet_rpc_wallet_passphrase.'",60]}';
-        $result=grc_rpc_send_query($query);
+        $result=wallet_rpc_send_query($query);
         $data=json_decode($result);
         if($data->error == NULL) return TRUE;
         else return FALSE;
