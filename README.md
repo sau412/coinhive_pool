@@ -20,5 +20,5 @@ Users mine for monero with coinhive script. Site aggregates statistics (hashes) 
 Pool has two-level referral system and badges.
 
 ## How payouts work
-* Payouts possible with RPC interface, see wallet_send_rewards.php
-Other payouts in manual mode.
+* Payouts possible with Bitcoin-like RPC interface, see wallet_send_rewards.php
+* Other payouts in manual mode.
