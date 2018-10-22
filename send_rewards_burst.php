@@ -70,7 +70,7 @@ function wallet_rpc_send($wallet_address,$amount) {
         global $wallet_rpc_passphrase;
         $wallet_address_html=html_escape($wallet_address);
         $amountNQT=$amount*100000000;
-        $query="requestType=sendMoney&secretPhrase=$wallet_rpc_passphrase&recipient=$wallet_address&amountNQT=$amountNQT&feeNQT=$tx_fee_NQT&deadline=24";
+        $query="requestType=sendMoney&secretPhrase=$wallet_rpc_passphrase&recipient=$wallet_address_html&amountNQT=$amountNQT&feeNQT=$tx_fee_NQT&deadline=24";
         $post=TRUE;
         $result=wallet_rpc_send_query($query,$post);
 
