@@ -10,7 +10,7 @@ Online mining pool based on coinhive miner.
 
 ## Installation
 * Copy files to web folder
-* Import DB scheme from base.sql
+* Import DB scheme from db_scheme.sql
 * Write your settings in settings.php
 
 ## How it works
@@ -23,3 +23,4 @@ Pool has two-level referral system and badges.
 * Payouts possible with Bitcoin-like RPC interface, see send_rewards_core_wallet.php
 * Payouts possible with NXT-like RPC interface, see send_rewards_burst.php
 * Other payouts in manual mode.
+* On user's withdraw request admin receives email notify
