@@ -13,8 +13,16 @@ $salt="";
 // Cooldown limit
 $cooldown_limit=900;
 
+// Coinhive keys
 $coinhive_private_key="";
 $coinhive_public_key="";
+
+// Email service
+$email_api_url="https://api.smtp2go.com/v3/email/send";
+$email_api_key="";
+$email_sender="";
+$email_reply_to="";
+$email_notify="";
 
 // Referral rate
 $hashes_ref_rate=0.01;
