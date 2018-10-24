@@ -3,6 +3,7 @@ require_once("settings.php");
 require_once("db.php");
 require_once("core.php");
 require_once("coinhive.php");
+require_once("email.php");
 
 // Only ASCII parameters allowed
 foreach($_GET as $key => $value) {
@@ -117,7 +118,8 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 $received_token=$_POST['token'];
                 $currency_code=$_POST['currency_code'];
                 $payout_address=$_POST['payout_address'];
-                $payment_id=$_POST['payment_id'];
+                if(isset($_POST['payment_id'])) $payment_id=$_POST['payment_id'];
+                else $payment_id='';
                 if($payout_address=="") die("Address is not set");
 
                 if($token==$received_token) {
@@ -155,6 +157,9 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                                         db_query("UPDATE `users` SET `withdrawn`='$hashes_withdrawn_new',`cooldown`=NOW() WHERE `uid`='$user_uid_escaped'");
 
                                         write_log("Withdraw user '$login' amount '$user_hashes' (from mined '$hashes_mined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn') coin '$currency_code'");
+
+                                        email_add($email_notify,"Withdraw '$login' '$total' '$currency_code'",
+                                                "Withdraw user '$login' amount '$user_hashes' (from mined '$hashes_mined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn') coin '$currency_code' address $payout_address");
 
                                         $address_escaped=db_escape($payout_address);
                                         $payment_id_escaped=db_escape($payment_id);
@@ -400,11 +405,13 @@ FROM `currency` WHERE `currency_code`='$coin_escaped' ORDER BY `currency_code` A
                 $total=$result-$payout_fee-$project_fee;
                 $total_fee=sprintf("%0.8F",$payout_fee+$project_fee);
                 $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
-                $fee_hashes=ceil(1000000*$total_fee/$rate_per_mhash);
+                if($rate_per_mhash>0) $fee_hashes=ceil(1000000*$total_fee/$rate_per_mhash);
+                else $fee_hashes=0;
                 $fee_hashes_unit="hashes";
 
                 if($fee_hashes>=1000000) {
-                        $fee_hashes=sprintf("%0.2F",$total_fee/$rate_per_mhash);
+                        if($rate_per_mhash>0) $fee_hashes=sprintf("%0.2F",$total_fee/$rate_per_mhash);
+                        else $fee_hashes=0;
                         $fee_hashes_unit="Mhashes";
                 }
 
