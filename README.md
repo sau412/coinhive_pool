@@ -22,5 +22,6 @@ Pool has two-level referral system and badges.
 ## How payouts work
 * Payouts possible with Bitcoin-like RPC interface, see send_rewards_core_wallet.php
 * Payouts possible with NXT-like RPC interface, see send_rewards_burst.php
+* Payouts possible with TRON cryptocurrency, see send_rewards_tron.php
 * Other payouts in manual mode.
 * On user's withdraw request admin receives email notify
