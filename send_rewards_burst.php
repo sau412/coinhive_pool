@@ -17,7 +17,7 @@ $wallet_rpc_passphrase="";
 // Send query to gridcoin client
 function wallet_rpc_send_query($query,$post=FALSE) {
         global $wallet_rpc_url;
-var_dump($query);
+//var_dump($query);
         // Setup cURL
         $ch=curl_init($wallet_rpc_url);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER,TRUE);
@@ -30,7 +30,7 @@ var_dump($query);
         }
         // Send query
         $result=curl_exec($ch);
-var_dump($result);
+//var_dump($result);
         curl_close($ch);
 
         return $result;
