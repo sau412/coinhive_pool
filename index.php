@@ -4,6 +4,7 @@ require_once("db.php");
 require_once("core.php");
 require_once("coinhive.php");
 require_once("email.php");
+require_once("html.php");
 
 // Only ASCII parameters allowed
 foreach($_GET as $key => $value) {
@@ -23,16 +24,8 @@ $coinhive_xmr_per_Mhash=get_variable("payoutPer1MHashes");
 // Miner link - show only miner for that user
 if(isset($_GET['miner'])) {
         $user_uid=stripslashes($_GET['miner']);
-        $user_uid_escaped=db_escape($user_uid);
-        $coinhive_id=db_query_to_variable("SELECT `coinhive_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
-        $miner_form=<<<_END
-<script src="https://authedmine.com/lib/simple-ui.min.js" async></script>
-<div class="coinhive-miner"
-        data-key="$coinhive_public_key"
-        data-user="$coinhive_id">
-        <em>Loading...</em>
-</div>
-_END;
+        $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
+        $miner_form=html_coinhive_frame($coinhive_id);
         echo $miner_form;
         die();
 }
@@ -194,12 +187,7 @@ Welcome, $username_html (<a href='?action=logout&token=$token'>logout</a>)
 
 _END;
 
-        $coinhive_id=db_query_to_variable("SELECT `coinhive_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
-        if($coinhive_id=='') {
-                $coinhive_id=$token=bin2hex(random_bytes(16));
-                $coinhive_id_escaped=db_escape($coinhive_id);
-                db_query("UPDATE `users` SET `coinhive_id`='$coinhive_id_escaped' WHERE `uid`='$user_uid_escaped'");
-        }
+        $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
 
         $miner_form=<<<_END
 <div class="coinhive-miner"
@@ -250,53 +238,9 @@ if(isset($_COOKIE['message'])) {
 
 if(isset($_GET['json'])) {
         if($logged_in==FALSE) {
-                echo "<p>Disclaimer: this page embeds third-party script (coinhive), use it on your own risk.</p>";
-                //echo "<p>Only registered user can mine and withdraw</p>";
-                echo "<p>Mine any supported coin online in the browser:</p>";
-                echo "<p>Mine hashes, then convert mined hashes into any supported coin.</p>";
-                echo "<p>Actual exchange rate is used. Fee depends on the coin. You can withdraw any amount above payout fee. Withdraw takes up to 24 hours.</p>";
-                echo "<p>If you want to add your favourite coin here, please contact <a href='mailto:sau412@gmail.com'>sau412@gmail.com</a></p>";
-                $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`rate_per_mhash`,`img_url`,`payment_id_field` FROM `currency` ORDER BY `currency_code` ASC");
-
-                echo "<h2>Supported coins</h2>\n";
-                echo "<p>Fee depends on the coin</p>\n";
-                echo "<center>\n";
-                echo "<table class=currency_grid>\n";
-                $n=0;
-                foreach($currency_data_array as $currency_data) {
-                        if(($n%6)==0) echo "</tr>\n<tr>\n";
-                        $n++;
-                        $currency_code=$currency_data['currency_code'];
-                        $currency_name=$currency_data['currency_name'];
-                        $img_url=$currency_data['img_url'];
-                        $rate_per_mhash=$currency_data['rate_per_mhash'];
-                        $payout_fee=$currency_data['payout_fee'];
-                        $project_fee=$currency_data['project_fee'];
-                        $payment_id_field=$currency_data['payment_id_field'];
-
-                        //$result=$user_hashes*$rate_per_mhash/1000000;
-                        //$total=$result-$payout_fee-$project_fee;
-
-                        $total_fee=sprintf("%0.8f",$payout_fee+$project_fee);
-
-                        $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
-
-                        //$result=sprintf("%0.8f",$result);
-                        //if($total>0) $total=sprintf("%0.8f<br><a href='#'>withdraw</a>",$total);
-                        //else $total=sprintf("<span style='color:red;'>%0.8f</span><br>mining for fee",$total);
-
-                        echo "<td><img src='$img_url'><br><strong>$currency_name</strong><br><small>$rate_per_mhash<br>per Mhash</small></td>\n";
-                        //echo "<td><a href='?coin=$currency_code'><img src='$img_url'></a><br><strong>$currency_name</strong></td>\n";
-                        //echo "<td onClick=\"set_coin('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br>$total</td>\n";
-                }
-
-                echo "</table>\n";
-                echo "</center>\n";
+                echo html_register_login_info();
                 die();
         }
-
-        // Hashes before update
-//      $prev_user_hashes=get_user_balance($user_uid);
 
         $balance_data=coinhive_get_user_balance($coinhive_id);
         if($balance_data->success) {
@@ -312,20 +256,15 @@ if(isset($_GET['json'])) {
 
         $hashes_total_escaped=db_escape($hashes_total);
         $hashes_withdrawn_escaped=db_escape($hashes_withdrawn);
-        //$hashes_balance_escaped=db_escape($hashes_balance);
 
         db_query("UPDATE `users` SET `mined`='$hashes_total_escaped' WHERE uid='$user_uid_escaped' AND `mined`<='$hashes_total_escaped'");
 
         $cooldown_time=db_query_to_variable("SELECT UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(COALESCE(`cooldown`,0)) FROM `users` WHERE `uid`='$user_uid_escaped'");
 
-        //$user_hashes=$hashes_total-$hashes_withdrawn+$hashes_bonus+$hashes_ref;
         // Hashes after update
         $user_hashes=get_user_balance($user_uid);
 
         // Show balance and other data
-        //echo "<h2>Balance <span id=balance_info>$prev_user_hashes</span> hashes</h2>\n";
-        //echo "<input type=hidden id=balance_begin value='$prev_user_hashes'>\n";
-        //echo "<input type=hidden id=balance_end value='$user_hashes'>\n";
         echo <<<_END
 <script>
 if (document.getElementById('balance_shown') !== null) {
@@ -350,215 +289,29 @@ _END;
         echo "</p>\n";
 
         if($coin=='') {
-                $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`rate_per_mhash`,`img_url`,`payment_id_field` FROM `currency` ORDER BY `currency_code` ASC");
-
-                echo "<h2>Select your coin:</h2>\n";
-                echo "<center>\n";
-                echo "<table class=currency_grid>\n";
-                $n=0;
-                foreach($currency_data_array as $currency_data) {
-                        if(($n%6)==0) echo "</tr>\n<tr>\n";
-                        $n++;
-                        $currency_code=$currency_data['currency_code'];
-                        $currency_name=$currency_data['currency_name'];
-                        $img_url=$currency_data['img_url'];
-                        $rate_per_mhash=$currency_data['rate_per_mhash'];
-                        $payout_fee=$currency_data['payout_fee'];
-                        $project_fee=$currency_data['project_fee'];
-                        $payment_id_field=$currency_data['payment_id_field'];
-
-                        $result=$user_hashes*$rate_per_mhash/1000000;
-                        $total=$result-$payout_fee-$project_fee;
-
-                        $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
-
-                        $result=sprintf("%0.8f",$result);
-                        if($total>0) $total=sprintf("%0.8f",$total);
-                        else $total=sprintf("below fee",$total);
-
-                        if($total>0) echo "<td class='currency_grid_withdrawable' onClick=\"set_coin('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br><small>$total</small></td>\n";
-                        else echo "<td onClick=\"set_coin('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br><small>$total</small></td>\n";
-                        //echo "<td><a href='?coin=$currency_code'><img src='$img_url'></a><br><strong>$currency_name</strong></td>\n";
-                        //echo "<td onClick=\"set_coin('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br>$total</td>\n";
-                }
-
-                echo "</table>\n";
-                echo "</center>\n";
+                echo html_select_your_coin($user_hashes);
         } else {
-                $coin_escaped=db_escape($coin);
-                $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`enabled`,`payout_fee`,`project_fee`,`rate_per_mhash`,`img_url`,`payment_id_field`,`user_withdraw_note`
-FROM `currency` WHERE `currency_code`='$coin_escaped' ORDER BY `currency_code` ASC");
-
-                $currency_data=array_pop($currency_data_array);
-
-                $currency_code=$currency_data['currency_code'];
-                $currency_name=$currency_data['currency_name'];
-                $enabled=$currency_data['enabled'];
-                $img_url=$currency_data['img_url'];
-                $rate_per_mhash=$currency_data['rate_per_mhash'];
-                $payout_fee=$currency_data['payout_fee'];
-                $project_fee=$currency_data['project_fee'];
-                $payment_id_field=$currency_data['payment_id_field'];
-                $user_withdraw_note=$currency_data['user_withdraw_note'];
-
-                $result=$user_hashes*$rate_per_mhash/1000000;
-                $total=$result-$payout_fee-$project_fee;
-                $total_fee=sprintf("%0.8F",$payout_fee+$project_fee);
-                $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
-                if($rate_per_mhash>0) $fee_hashes=ceil(1000000*$total_fee/$rate_per_mhash);
-                else $fee_hashes=0;
-                $fee_hashes_unit="hashes";
-
-                if($fee_hashes>=1000000) {
-                        if($rate_per_mhash>0) $fee_hashes=sprintf("%0.2F",$total_fee/$rate_per_mhash);
-                        else $fee_hashes=0;
-                        $fee_hashes_unit="Mhashes";
-                }
-
-                $result=sprintf("%0.8f",$result);
-                if($total>0) {
-                        $total=sprintf("%0.8f $currency_code",$total);
-                        $withdraw_button="<input type=submit value='send withdraw request'>";
-                } else {
-                        $total="Nothing";
-                        $withdraw_form='Nothing to withdraw';
-                }
-                echo "<center>\n";
-                echo "<p><input type=button value='Change coin' onClick=\"set_coin('');\"></p>\n";
-                echo <<<_END
-<form name=withdraw method=POST>
-<input type=hidden name=action value=withdraw>
-<input type=hidden name=token value=$token>
-<input type=hidden name=currency_code value='$currency_code'>
-
-_END;
-                echo "<h2>Your results in <img src='$img_url'> $currency_name:</h2>\n";
-                echo "<table class='data_table'>\n";
-                echo "<tr><th align=right>Hashes mined</th><td>$user_hashes</td></tr>\n";
-                echo "<tr><th align=right>Exchange rate</th><td>$rate_per_mhash $currency_code per Mhash</td></tr>\n";
-                echo "<tr><th align=right>Current balance</th><td>$result $currency_code</td></tr>\n";
-                echo "<tr><th align=right>Withdraw fee</th><td>$total_fee $currency_code ($fee_hashes $fee_hashes_unit)</td></tr>\n";
-                echo "<tr><th align=right>You can withdraw</th><td>$total</td></tr>\n";
-                if($cooldown_time<$cooldown_limit) {
-                        echo "<tr><th></th><td>One withdraw in 15 minutes</td></tr>";
-                } else if($total>0) {
-                        echo "<tr><th align=right>Your address</th><td><input type=text name=payout_address size=40 placeholder='required' required></td></tr>\n";
-                        if($payment_id_field) {
-                                echo "<tr><th align=right>Payment ID</th><td><input type=text name=payment_id size=40 placeholder='optional'></td></tr>\n";
-                        }
-                        echo "<tr><th align=right></th><td>$withdraw_button<br>$user_withdraw_note</td></tr>\n";
-                } else {
-                        echo "<tr><th></th><td>Nothing to withdraw<br>$user_withdraw_note</td></tr>";
-                }
-//              if($user_withdraw_note!='')
-//                      echo "<p>$user_withdraw_note</p>\n";
-                echo "</table>\n";
-                echo "</form>";
-                echo "</center>\n";
+                echo html_results_in_coin($user_hashes,$coin);
         }
 
-        $payout_data_array=db_query_to_array("SELECT `currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`tx_id`,`timestamp` FROM `payouts` WHERE `user_uid`='$user_uid_escaped' OR `session`='$session_escaped' ORDER BY `timestamp` DESC LIMIT 10");
+        // Achievements
+        echo html_achievements_section($user_uid);
 
-        $badges_array=get_user_badges($user_uid);
-        if(count($badges_array)>0) {
-                echo "<h2>Your achievements</h2>";
-                echo implode("&nbsp;",$badges_array);
-        }
+        // User links
+        echo html_links_section($user_uid);
 
-        echo "<h2>Your links</h2>\n";
-        echo "<p>Earn 1 % of hashes, mined by each your referral. Mine without logging in with miner link.</p>\n";
-        echo "<center>\n";
-        echo "<table class=data_table>\n";
-        $ref_link="https://hivepool.arikado.ru/?ref=$user_uid";
-        $miner_link="https://hivepool.arikado.ru/?miner=$user_uid";
-        echo "<tr><th align=right>Your referral link:</th><td><input type=text size=50 value='$ref_link'></td>\n";
-        echo "<tr><th align=right>Your miner link:</th><td><input type=text size=50 value='$miner_link'></td>\n";
-        echo "</table>\n";
+        // User payouts
+        echo html_payouts_section($user_uid);
 
-        echo "<h2>Your payouts</h2>\n";
-        echo "<center>\n";
-        //echo "<table class=data_table>\n";
-        //echo "<tr><th>Address</th><th>Hashes</th><th>Total</th><th>Transaction</th><th>Timestamp</th></tr>\n";
-
-        foreach($payout_data_array as $payout_data) {
-                $currency_code=$payout_data['currency_code'];
-                $address=$payout_data['address'];
-                $payment_id=$payout_data['payment_id'];
-                $hashes=$payout_data['hashes'];
-                $rate_per_mhash=$payout_data['rate_per_mhash'];
-                $amount=$payout_data['amount'];
-                $payout_fee=$payout_data['payout_fee'];
-                $project_fee=$payout_data['project_fee'];
-                $total=$payout_data['total'];
-                $tx_id=$payout_data['tx_id'];
-                $timestamp=$payout_data['timestamp'];
-
-                $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
-                $total=sprintf("%0.8f",$total);
-                $fee=$payout_fee+$project_fee;
-
-                if($payment_id!='') $address.="<br>PID $payment_id";
-
-                if($tx_id=='') $tx_id="not sent yet";
-
-                echo "<p>\n";
-                echo "<table class=data_table>\n";
-                echo "<tr><th>Address</th><td>$address</td></tr>\n";
-                echo "<tr><th>Hashes</th><td>$hashes</td></tr>\n";
-                echo "<tr><th>Total</th><td>$total $currency_code</td></tr>\n";
-                echo "<tr><th>Transaction</th><td>$tx_id</td></tr>\n";
-                echo "<tr><th>Timestamp</th><td>$timestamp</td></tr>\n";
-                //echo "<tr><tr><td>$address</td><td>$hashes</td><td>$total $currency_code</td><td>$tx_id</td><td>$timestamp</td></tr>\n";
-                echo "</table>\n";
-                echo "</p>\n";
-        }
-        //echo "</table>\n";
-        echo "</center>\n";
-
+        // This is end of dynamically loaded block, so script should stop here
         die();
 }
 
 
-echo <<<_END
-<!DOCTYPE html>
-<html>
-<head>
-<title>Coinhive pool</title>
-<meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<link rel="icon" href="favicon.png" type="image/png">
-<script src='jquery-3.3.1.min.js'></script>
-<script src="https://authedmine.com/lib/simple-ui.min.js" async></script>
-<style>
-body {
-        font-family: sans-serif;
-        text-align:center;
-}
-.data_table {
-        border: 1px solid gray;
-        border-collapse: collapse;
-}
-.data_table tr, .data_table td, .data_table th {
-        border: 1px solid gray;
-        padding: 0.5px 1em;
-}
+echo html_page_begin($pool_name);
 
-.currency_grid td {
-        border: 0;
-        width: 100px;
-        padding: 1em;
-        text-align:center;
-}
-.currency_grid .currency_grid_withdrawable {
-        background-color:#DFD;
-}
-.currency_grid td:hover {
-        background-color:lightblue;
-}
-</style>
-</head>
-<body>
-<h1>Coinhive pool</h1>
+echo <<<_END
+<h1>$pool_name</h1>
 $message
 <p>
 $login_form
@@ -571,33 +324,7 @@ $balance_form
 
 _END;
 
-echo <<<_END
-<script>
-$( document ).ready(refresh_data());
+// End of page, script and footer
+echo html_page_end();
 
-function refresh_data() {
-        var coin=document.getElementById('coin').value;
-        $('#mining_info').load('?json=1&coin='+coin);
-        setTimeout('refresh_data()',60000);
-}
-
-function refresh_balance(balance) {
-        prev_balance=document.getElementById('balance_info').innerHTML;
-        if (eval(prev_balance) < eval(balance)) {
-                document.getElementById('balance_info').innerHTML=balance;
-        }
-}
-
-function set_coin(coin) {
-        document.getElementById('coin').value=coin;
-        $('#mining_info').load('?json=1&coin='+coin);
-}
-</script>
-
-<hr width=10%>
-<p>Opensource coinhive pool (<a href='https://github.com/sau412/coinhive_pool'>github link</a>) by Vladimir Tsarev, my nickname is sau412 on telegram, twitter, facebook, gmail, github, vk.</p>
-</body>
-</html>
-
-_END;
 ?>
