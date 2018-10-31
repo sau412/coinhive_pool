@@ -225,7 +225,7 @@ function html_select_your_coin($user_hashes) {
         return $result;
 }
 
-function html_results_in_coin($user_hashes,$coin) {
+function html_results_in_coin($user_uid,$user_hashes,$coin) {
         global $token;
 
         $result="";
@@ -285,7 +285,7 @@ _END;
         $result.="<tr><th align=right>Current balance</th><td>$result_in_currency $currency_code</td></tr>\n";
         $result.="<tr><th align=right>Withdraw fee</th><td>$total_fee $currency_code ($fee_hashes $fee_hashes_unit)</td></tr>\n";
         $result.="<tr><th align=right>You can withdraw</th><td>$total</td></tr>\n";
-        if($cooldown_time<$cooldown_limit) {
+        if(is_cooltime_active($user_uid)) {
                 $result.="<tr><th></th><td>One withdraw in 15 minutes</td></tr>";
         } else if($total>0) {
                 $result.="<tr><th align=right>Your address</th><td><input type=text name=payout_address size=40 placeholder='required' required></td></tr>\n";
