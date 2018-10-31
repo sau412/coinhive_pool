@@ -101,6 +101,15 @@ function get_coinhive_id_by_user_uid($user_uid) {
         return $coinhive_id;
 }
 
+// Get cooldown time status
+function is_cooltime_active($user_uid) {
+        global $cooldown_limit;
+        $user_uid_escaped=db_escape($user_uid);
+        $cooldown_time=db_query_to_variable("SELECT MIN(UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(COALESCE(`cooldown`,0))) FROM `users` WHERE `uid`='$user_uid_escaped'");
+        if($cooldown_time<$cooldown_limit) return TRUE;
+        else return FALSE;
+}
+
 // For php 5 only variant for random_bytes is openssl_random_pseudo_bytes from openssl lib
 if(!function_exists("random_bytes")) {
         function random_bytes($n) {
