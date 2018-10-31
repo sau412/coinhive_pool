@@ -116,7 +116,7 @@ function html_payouts_section($user_uid) {
                 if($payment_id!='') $address.="<br>PID $payment_id";
 
                 if($tx_id=='') $tx_id="not sent yet";
-                else $tx_id=html_tx_link($ccurrency_code,$tx_id);
+                else $tx_id=html_tx_link($currency_code,$tx_id);
 
                 $result.="<p>\n";
                 $result.="<table class=data_table>\n";
