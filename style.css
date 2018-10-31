@@ -1,0 +1,44 @@
+/* Common styles */
+body {
+        font-family: sans-serif;
+        text-align:center;
+}
+
+/* Table with data and with grid */
+.data_table {
+        border: 1px solid gray;
+        border-collapse: collapse;
+}
+.data_table tr, .data_table td, .data_table th {
+        border: 1px solid gray;
+        padding: 0.5px 1em;
+}
+
+/* Table with coins*/
+.currency_grid td {
+        border: 0;
+        width: 100px;
+        padding: 1em;
+        text-align:center;
+}
+.currency_grid .currency_grid_withdrawable {
+        background-color:#DFD;
+}
+.currency_grid td:hover {
+        background-color:lightblue;
+}
+
+/* Tabs */
+.tabs td {
+        border-top: 1px solid gray;
+        border-left: 1px solid gray;
+        border-right: 1px solid gray;
+        border-top-left-radius: 0.3em;
+        border-top-right-radius: 0.3em;
+        width: 100px;
+        padding: 0.3em 1em;
+        text-align:center;
+}
+.tabs td:hover {
+        background-color:lightgray;
+}
