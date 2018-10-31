@@ -107,6 +107,8 @@ function html_payouts_section($user_uid) {
                 $tx_id=$payout_data['tx_id'];
                 $timestamp=$payout_data['timestamp'];
 
+                $address_link=html_address_link($currency_code,$address);
+
                 $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
                 $total=sprintf("%0.8f",$total);
                 $fee=$payout_fee+$project_fee;
@@ -114,10 +116,11 @@ function html_payouts_section($user_uid) {
                 if($payment_id!='') $address.="<br>PID $payment_id";
 
                 if($tx_id=='') $tx_id="not sent yet";
+                else $tx_id=html_tx_link($ccurrency_code,$tx_id);
 
                 $result.="<p>\n";
                 $result.="<table class=data_table>\n";
-                $result.="<tr><th>Address</th><td>$address</td></tr>\n";
+                $result.="<tr><th>Address</th><td>$address_link</td></tr>\n";
                 $result.="<tr><th>Hashes</th><td>$hashes</td></tr>\n";
                 $result.="<tr><th>Total</th><td>$total $currency_code</td></tr>\n";
                 $result.="<tr><th>Transaction</th><td>$tx_id</td></tr>\n";
@@ -302,6 +305,46 @@ _END;
 
         return $result;
 }
+
+function html_address_link($coin,$address) {
+        $result="";
+        $coin_escaped=db_escape($coin);
+        $address_url=db_query_to_variable("SELECT `url_wallet` FROM `currency` WHERE `currency_code`='$coin_escaped'");
+        if($address_url!='') {
+                $address_urlencoded=urlencode($address);
+                if(strlen($address)>20) {
+                        $address_short=substr($address,0,20)."...";
+                } else {
+                        $address_short=$address;
+                }
+                $address_short_html=html_escape($address_short);
+                $result="<a href='${address_url}${address}'>$address_short_html</a>";
+        } else {
+                $result=$address;
+        }
+        return $result;
+}
+
+function html_tx_link($coin,$tx_id) {
+        $result="";
+        $coin_escaped=db_escape($coin);
+        $tx_url=db_query_to_variable("SELECT `url_tx` FROM `currency` WHERE `currency_code`='$coin_escaped'");
+        if($tx_url!='') {
+                $tx_urlencoded=urlencode($tx_id);
+                if(strlen($tx_id)>20) {
+                        $tx_short=substr($tx_id,0,20)."...";
+                } else {
+                        $tx_short=$tx_id;
+                }
+                $tx_short_html=html_escape($tx_short);
+                $result="<a href='${tx_url}${tx_urlencoded}'>$tx_short_html</a>";
+        } else {
+                $result=$tx_id;
+        }
+        return $result;
+}
+
+
 
 function html_show_balance_big() {
 }
