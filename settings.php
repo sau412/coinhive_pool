@@ -1,5 +1,7 @@
 <?php
 // Settings file
+$pool_name="Coinhive pool";
+$pool_domain="";
 
 // DB variables
 $db_host="";
