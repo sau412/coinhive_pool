@@ -127,9 +127,9 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
 
                         //$user_hashes=$hashes_mined-$hashes_withdrawn+$hashes_bonus+$hashes_ref;
 
-                        $cooldown_time=db_query_to_variable("SELECT MIN(UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(COALESCE(`cooldown`,0))) FROM `users` WHERE `uid`='$user_uid_escaped'");
+                        //$cooldown_time=db_query_to_variable("SELECT MIN(UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(COALESCE(`cooldown`,0))) FROM `users` WHERE `uid`='$user_uid_escaped'");
 
-                        if($cooldown_time<$cooldown_limit) {
+                        if(is_cooltime_active($user_uid)) {
                                 $message="One withdraw in 15 minutes";
                         } else if($user_hashes<=0) {
                                 $message="Nothing to withdraw";
@@ -291,7 +291,7 @@ _END;
         if($coin=='') {
                 echo html_select_your_coin($user_hashes);
         } else {
-                echo html_results_in_coin($user_hashes,$coin);
+                echo html_results_in_coin($user_uid,$user_hashes,$coin);
         }
 
         // Achievements
