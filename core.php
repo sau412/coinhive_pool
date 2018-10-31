@@ -65,6 +65,8 @@ function get_user_badges($user_uid) {
         $refs=db_query_to_variable("SELECT count(*) FROM `users` WHERE `ref_id`='$user_uid_escaped'");
         $withdraws=db_query_to_variable("SELECT count(*) FROM `payouts` WHERE `user_uid`='$user_uid_escaped'");
 
+        $coins=db_query_to_variable("SELECT count(DISTINCT `currency_code`) FROM `payouts` WHERE `user_uid`='$user_uid_escaped'");
+
         $badges_array=array();
 
         if($mined>=1E6) $badges_array[]="<span style='background-color:#F88;' title='Mined 1 Mhash'>&nbsp;Beginner&nbsp;</sup></span>";
@@ -72,17 +74,31 @@ function get_user_badges($user_uid) {
         if($mined>=1E8) $badges_array[]="<span style='background-color:#F22;' title='Mined 100 Mhash'>&nbsp;Advanced miner&nbsp;</sup></span>";
         if($mined>=1E9) $badges_array[]="<span style='background-color:#F00;' title='Mined 1000 Mhash'>&nbsp;Farm&nbsp;</sup></span>";
 
+        if($coins>=5) $badges_array[]="<span style='background-color:#FF0;' title='Withdraw in 5 different coins'>&nbsp;Multicoiner&nbsp;</sup></span>";
+
         if($refs>=1E0) $badges_array[]="<span style='background-color:#8F8;' title='Referred 1 user'>&nbsp;One more user&nbsp;</span>";
         if($refs>=1E1) $badges_array[]="<span style='background-color:#4F4;' title='Referred 10 users'>&nbsp;Foreman&nbsp;</span>";
         if($refs>=1E2) $badges_array[]="<span style='background-color:#2F2;' title='Referred 100 users'>&nbsp;Centurion&nbsp;</span>";
         if($refs>=1E3) $badges_array[]="<span style='background-color:#0F0;' title='Referred 1000 users'>&nbsp;Creator&nbsp;</span>";
 
-        if($withdraws>=1E0) $badges_array[]="<span style='background-color:#88F;' title='Withdraw 1 time'>&nbsp;Just try&nbsp;</span>";
-        if($withdraws>=1E1) $badges_array[]="<span style='background-color:#44F;' title='Withdraw 10 times'>&nbsp;&nbsp;</span>";
+        if($withdraws>=1E0) $badges_array[]="<span style='background-color:#88F;' title='Withdraw 1 time'>&nbsp;First try&nbsp;</span>";
+        if($withdraws>=1E1) $badges_array[]="<span style='background-color:#44F;' title='Withdraw 10 times'>&nbsp;Ten withdraws&nbsp;</span>";
         if($withdraws>=1E2) $badges_array[]="<span style='background-color:#22F;' title='Withdraw 100 times'>&nbsp;Tester&nbsp;</span>";
         if($withdraws>=1E3) $badges_array[]="<span style='background-color:#00F;' title='Withdraw 1000 times'>&nbsp;Withdraw fabric&nbsp;</span>";
 
         return $badges_array;
+}
+
+// Get coinhive_id by user_uid
+function get_coinhive_id_by_user_uid($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $coinhive_id=db_query_to_variable("SELECT `coinhive_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
+        if($coinhive_id=='') {
+                $coinhive_id=bin2hex(random_bytes(16));
+                $coinhive_id_escaped=db_escape($coinhive_id);
+                db_query("UPDATE `users` SET `coinhive_id`='$coinhive_id_escaped' WHERE `uid`='$user_uid_escaped'");
+        }
+        return $coinhive_id;
 }
 
 // For php 5 only variant for random_bytes is openssl_random_pseudo_bytes from openssl lib
