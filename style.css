@@ -42,3 +42,9 @@ body {
 .tabs td:hover {
         background-color:lightgray;
 }
+
+/* Alive users */
+.alive {
+        background-color: lightgreen;
+}
+
