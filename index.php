@@ -61,22 +61,26 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
         else if(isset($_POST['action'])) $action=$_POST['action'];
 
         if($action=="register") {
-                $login=$_POST['login'];
-                $password=$_POST['password'];
-                $ref_id=$_POST['ref_id'];
+                $login=stripslashes($_POST['login']);
+                $password=stripslashes($_POST['password']);
+                $ref_id=stripslashes($_POST['ref_id']);
                 if($ref_id=='') $ref_id=0;
 
                 $message=user_register_or_login($session,$login,$password,$ref_id);
         } else if($action=="logout") {
                 user_logout($session);
         } else if($logged_in==TRUE && $action=="withdraw") {
-                $currency_code=$_POST['currency_code'];
-                $payout_address=$_POST['payout_address'];
+                $currency_code=stripslashes($_POST['currency_code']);
+                $payout_address=stripslashes($_POST['payout_address']);
 
                 if(isset($_POST['payment_id'])) $payment_id=$_POST['payment_id'];
                 else $payment_id='';
 
                 $message=user_withdraw($session,$user_uid,$currency_code,$payout_address,$payment_id);
+        } else if(is_admin($user_uid) && $action=='set_tx_id') {
+                $tx_id=stripslashes($_POST['tx_id']);
+                $payout_uid=stripslashes($_POST['payout_uid']);
+                $message=admin_set_tx_id($payout_uid,$tx_id);
         }
         setcookie("message",$message);
         header("Location: ./");
@@ -108,19 +112,31 @@ if(isset($_GET['json'])) {
                 $user_hashes=$new_balance_data['balance'];
                 if($coin=='') {
                         echo html_select_your_coin($user_hashes);
+
+                        // Achievements
+                        echo html_achievements_section($user_uid);
+
+                        // User links
+                        echo html_links_section($user_uid);
+
+                        // User payouts
+                        echo html_payouts_section($user_uid);
+                } else if(is_admin($user_uid) && $coin=="admin") {
+                        echo html_registered_users_admin();
+                        echo html_payouts_section_admin();
+                        echo html_log_section_admin();
                 } else {
                         echo html_results_in_coin($user_uid,$user_hashes,$coin);
+
+                        // Achievements
+                        echo html_achievements_section($user_uid);
+
+                        // User links
+                        echo html_links_section($user_uid);
+
+                        // User payouts
+                        echo html_payouts_section($user_uid);
                 }
-
-                // Achievements
-                echo html_achievements_section($user_uid);
-
-                // User links
-                echo html_links_section($user_uid);
-
-                // User payouts
-                echo html_payouts_section($user_uid);
-
         }
 
         die();
@@ -129,7 +145,7 @@ if(isset($_GET['json'])) {
 
 echo html_page_begin($pool_name);
 
-if($message) echo $message;
+if(isset($message) && $message!='') echo $message;
 
 // If logged in, show balance info
 if($logged_in) {
@@ -142,6 +158,7 @@ if($logged_in) {
 
         // Balance information
         echo html_balance_big($user_uid);
+        if(is_admin($user_uid)) echo html_button_admin_block();
         echo html_mininig_info_block();
 
 // If not logged in, show common information
