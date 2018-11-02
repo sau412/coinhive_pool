@@ -2,6 +2,13 @@
 
 // Standard page begin
 function html_page_begin($title) {
+        global $pool_name;
+
+        if(isset($_GET['coin'])) $coin=stripslashes($_GET['coin']);
+        else $coin="";
+
+        $coin_html=html_escape($coin);
+
         return <<<_END
 <!DOCTYPE html>
 <html>
@@ -11,10 +18,11 @@ function html_page_begin($title) {
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src='jquery-3.3.1.min.js'></script>
-<script src="https://authedmine.com/lib/simple-ui.min.js" async></script>
 <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
+<h1>$pool_name</h1>
+<input type=hidden id=coin value='$coin_html'>
 
 _END;
 }
@@ -143,15 +151,27 @@ function html_achievements_section($user_uid) {
         return $result;
 }
 
-// Balance
-function html_balance($user_uid) {
-        $result="";
-
-}
-
 // Not logged in page
 function html_register_login_info() {
+        global $token;
         $result="";
+
+        if(isset($_GET['ref'])) $ref_id=stripslashes($_GET['ref']);
+        else $ref_id=0;
+
+        $ref_id_html=html_escape($ref_id);
+
+        $result.=<<<_END
+<form name=register method=POST>
+<input type=hidden name=action value=register>
+<input type=hidden name=token value='$token'>
+<input type=hidden name=ref_id value='$ref_id_html'>
+Login: <input type=text name=login required>
+Password <input type=password name=password required>
+<input type=submit value='Login/register'>
+</form>
+
+_END;
         $result.="<p>Disclaimer: this page embeds third-party script (coinhive), use it on your own risk.</p>";
         $result.="<p>Mine any supported coin online in the browser:</p>";
         $result.="<p>Mine hashes, then convert mined hashes into any supported coin.</p>";
@@ -344,117 +364,42 @@ function html_tx_link($coin,$tx_id) {
         return $result;
 }
 
-
-
-function html_show_balance_big() {
-}
-
-function html_show_balance_detail() {
-}
-
-/*
-
-if($user_uid) {
-        $user_uid_escaped=db_escape($user_uid);
-        $username=db_query_to_variable("SELECT `username` FROM `users` WHERE `uid`='$user_uid_escaped'");
+function html_welcome_logout_form($user_uid) {
+        global $token;
+        $username=get_username_by_uid($user_uid);
         $username_html=html_escape($username);
-        $login_form=<<<_END
-Welcome, $username_html (<a href='?action=logout&token=$token'>logout</a>)
+        return "<p>Welcome, $username_html (<a href='?action=logout&token=$token'>logout</a>)</p>\n";
+}
 
-_END;
-
-        $coinhive_id=db_query_to_variable("SELECT `coinhive_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
-        if($coinhive_id=='') {
-                $coinhive_id=$token=bin2hex(random_bytes(16));
-                $coinhive_id_escaped=db_escape($coinhive_id);
-                db_query("UPDATE `users` SET `coinhive_id`='$coinhive_id_escaped' WHERE `uid`='$user_uid_escaped'");
-        }
-
-        $miner_form=<<<_END
-<div class="coinhive-miner"
-        data-key="$coinhive_public_key"
-        data-user="$coinhive_id">
-        <em>Loading...</em>
-</div>
-
-_END;
-
-        $logged_in=TRUE;
-
+function html_balance_big($user_uid) {
         $load_user_hashes=get_user_balance($user_uid);
-
-        $balance_form=<<<_END
+        $result=<<<_END
 <input type=hidden id=balance_shown value='$load_user_hashes'>
 <h2>Balance <span id=balance_info>$load_user_hashes</span> hashes</h2>
 
 _END;
-} else {
-        if(isset($_GET['ref'])) $ref_id=stripslashes($_GET['ref']);
-        else $ref_id=0;
-        $ref_id_html=html_escape($ref_id);
-        $login_form=<<<_END
-<form name=register method=POST>
-<input type=hidden name=action value=register>
-<input type=hidden name=token value='$token'>
-<input type=hidden name=ref_id value='$ref_id_html'>
-Login: <input type=text name=login required>
-Password <input type=password name=password required>
-<input type=submit value='Login/register'>
-</form>
-_END;
-        $miner_form='';
-
-        $logged_in=FALSE;
-        $load_user_hashes=0;
-
-        $balance_form='';
+        return $result;
 }
 
-if(isset($_COOKIE['message'])) {
-        $message="<div style='background:yellow;'>".html_escape($_COOKIE['message'])."</div>";
-        setcookie("message","");
-} else {
-        $message='';
-}
+function html_balance_detail($user_uid,$old_balance_data,$new_balance_data) {
+        $result="";
 
-if(isset($_GET['json'])) {
-        if($logged_in==FALSE) {
-                die();
-        }
-
-        // Hashes before update
-//      $prev_user_hashes=get_user_balance($user_uid);
-
-        $balance_data=coinhive_get_user_balance($coinhive_id);
-        if($balance_data->success) {
-                $hashes_total=$balance_data->total;
-        } else {
-                $hashes_total=0;
-        }
-
-        $hashes_withdrawn=db_query_to_variable("SELECT `withdrawn` FROM `users` WHERE `uid`='$user_uid_escaped'");
-        $hashes_bonus=db_query_to_variable("SELECT `bonus` FROM `users` WHERE `uid`='$user_uid_escaped'");
-        $hashes_ref=db_query_to_variable("SELECT SUM(`mined`) FROM `users` WHERE `ref_id`='$user_uid_escaped'");
-        $hashes_ref=floor($hashes_ref*$hashes_ref_rate);
-
-        $hashes_total_escaped=db_escape($hashes_total);
-        $hashes_withdrawn_escaped=db_escape($hashes_withdrawn);
-        //$hashes_balance_escaped=db_escape($hashes_balance);
-
-        db_query("UPDATE `users` SET `mined`='$hashes_total_escaped' WHERE uid='$user_uid_escaped' AND `mined`<='$hashes_total_escaped'");
-
-        $cooldown_time=db_query_to_variable("SELECT UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(COALESCE(`cooldown`,0)) FROM `users` WHERE `uid`='$user_uid_escaped'");
+        $hashes_withdrawn=$new_balance_data['withdrawn'];
+        $hashes_bonus=$new_balance_data['bonus'];
+        $hashes_ref=$new_balance_data['ref_total'];
+        $hashes_mined=$new_balance_data['mined'];
 
         // Hashes after update
-        $user_hashes=get_user_balance($user_uid);
+        $user_hashes_next=$new_balance_data['balance'];
+        $user_hashes_prev=$old_balance_data['balance'];
 
         // Show balance and other data
-        echo <<<_END
+        $result.=<<<_END
 <script>
 if (document.getElementById('balance_shown') !== null) {
         var intervals=600;
         var balance_begin=eval(document.getElementById('balance_shown').value);
-        var balance_end=eval('$user_hashes');
+        var balance_end=eval('$user_hashes_next');
         var balance_diff=balance_end-balance_begin;
         for(var i=1;i<=intervals;i++) {
                 var balance=Math.floor(balance_begin+i*balance_diff/intervals);
@@ -462,31 +407,26 @@ if (document.getElementById('balance_shown') !== null) {
                         setTimeout(refresh_balance,i*60000/intervals,balance);
                 }
         }
-        document.getElementById('balance_shown').value=eval('$user_hashes');
+        document.getElementById('balance_shown').value=eval('$user_hashes_prev');
 }
 </script>
-_END;
-        echo "<p>Mined $hashes_total hashes";
-        if($hashes_ref>0) echo ", referred $hashes_ref hashes";
-        if($hashes_bonus>0) echo ", bonus $hashes_bonus hashes";
-        if($hashes_withdrawn>0) echo ",  withdrawn $hashes_withdrawn hashes";
-        echo "</p>\n";
 
-        die();
+_END;
+        $result.="<p>Mined $hashes_mined hashes";
+        if($hashes_ref>0) $result.=", referred $hashes_ref hashes";
+        if($hashes_bonus>0) $result.=", bonus $hashes_bonus hashes";
+        if($hashes_withdrawn>0) $result.=", withdrawn $hashes_withdrawn hashes";
+        $result.="</p>\n";
+
+        return $result;
 }
 
+function html_mininig_info_block() {
+        return "<div id=mining_info>Loading data, please wait...</div>\n";
+}
 
-<h1>Coinhive pool</h1>
-$message
-<p>
-$login_form
-</p>
+function html_message($message) {
+        return "<div style='background:yellow;'>".html_escape($message)."</div>";
+}
 
-$miner_form
-$balance_form
-<div id=mining_info>Loading data, please wait...</div>
-<input type=hidden id=coin value='$coin_html'>
-
-_END;
-*/
 ?>
