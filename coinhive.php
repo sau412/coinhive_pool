@@ -7,7 +7,7 @@ $coinhive_get_payout_info_url="https://api.coinhive.com/stats/payout";
 
 // Get balance of specific user
 // Returns class with total, withdrawn and balance
-function coinhive_get_user_balance($address) {
+function coinhive_get_user_balance_detail($address) {
         global $coinhive_private_key;
         global $coinhive_get_balance_url;
 
@@ -24,6 +24,13 @@ function coinhive_get_user_balance($address) {
         return $data;
         //if(isset($data->balance) && $data->balance) return $data->balance;
         //else return 0;
+}
+
+// Returns only balance
+function coinhive_get_user_balance($address) {
+        $data=coinhive_get_user_balance_detail($address);
+        if(property_exists($data,"total") && $data->total!=0) return $data->total;
+        else return 0;
 }
 
 // Reset user balance
