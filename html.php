@@ -21,6 +21,7 @@ function html_page_begin($title) {
 <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
+<center>
 <h1>$pool_name</h1>
 <input type=hidden id=coin value='$coin_html'>
 
@@ -69,6 +70,7 @@ function set_coin(coin) {
 
 <hr width=10%>
 <p>Opensource coinhive pool (<a href='https://github.com/sau412/coinhive_pool'>github link</a>) by Vladimir Tsarev, my nickname is sau412 on telegram, twitter, facebook, gmail, github, vk.</p>
+</center>
 </body>
 </html>
 
@@ -83,7 +85,6 @@ function html_links_section($user_uid) {
         $result="";
         $result.="<h2>Your links</h2>\n";
         $result.="<p>Earn 1 % of hashes, mined by each your referral. Mine without logging in with miner link.</p>\n";
-        $result.="<center>\n";
         $result.="<table class=data_table>\n";
         $ref_link="https://$pool_domain/?ref=$user_uid_urlencoded";
         $miner_link="https://$pool_domain/?miner=$user_uid_urlencoded";
@@ -100,7 +101,6 @@ function html_payouts_section($user_uid) {
         $payout_data_array=db_query_to_array("SELECT `currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`tx_id`,`timestamp` FROM `payouts` WHERE `user_uid`='$user_uid_escaped' ORDER BY `timestamp` DESC LIMIT 10");
 
         $result.="<h2>Your payouts</h2>\n";
-        $result.="<center>\n";
 
         foreach($payout_data_array as $payout_data) {
                 $currency_code=$payout_data['currency_code'];
@@ -136,7 +136,139 @@ function html_payouts_section($user_uid) {
                 $result.="</table>\n";
                 $result.="</p>\n";
         }
-        $result.="</center>\n";
+        return $result;
+}
+
+// Payouts section for admin
+function html_payouts_section_admin() {
+        global $token;
+
+        $result="";
+
+        $payout_data_array=db_query_to_array("SELECT `uid`,`currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`tx_id`,`timestamp` FROM `payouts` WHERE `tx_id` IS NULL OR tx_id='' ORDER BY `timestamp`");
+
+        if(count($payout_data_array)>0) {
+                $result.="<h2>Unsent payouts</h2>\n";
+
+                foreach($payout_data_array as $payout_data) {
+                        $uid=$payout_data['uid'];
+                        $currency_code=$payout_data['currency_code'];
+                        $address=$payout_data['address'];
+                        $payment_id=$payout_data['payment_id'];
+                        $hashes=$payout_data['hashes'];
+                        $rate_per_mhash=$payout_data['rate_per_mhash'];
+                        $amount=$payout_data['amount'];
+                        $payout_fee=$payout_data['payout_fee'];
+                        $project_fee=$payout_data['project_fee'];
+                        $total=$payout_data['total'];
+                        $tx_id=$payout_data['tx_id'];
+                        $timestamp=$payout_data['timestamp'];
+
+                        $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
+                        $total=sprintf("%0.8f",$total);
+
+                        $result.="<p>\n";
+                        $result.="<form method=post>\n";
+                        $result.="<input type=hidden name='action' value='set_tx_id'>\n";
+                        $result.="<input type=hidden name='payout_uid' value='$uid'>\n";
+                        $result.="<input type=hidden name='token' value='$token'>\n";
+                        $result.="<table class='data_table'>\n";
+                        $result.="<tr><th>Address</th><td>$address</td></tr>\n";
+                        if($payment_id) $result.="<tr><th>Payment ID</th><td>$payment_id</td></tr>\n";
+                        $result.="<tr><th>Total</th><td>$total $currency_code</td></tr>\n";
+                        $result.="<tr><th>TX ID</th><td><textarea name=tx_id cols=60></textarea></td></tr>\n";
+                        $result.="<tr><th></th><td><input type=submit value='Set TX ID'></td></tr>\n";
+                        $result.="</table>\n";
+                        $result.="</form>\n";
+                        $result.="</p>\n";
+                }
+        }
+
+
+        $payout_data_array=db_query_to_array("SELECT `currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`tx_id`,`timestamp` FROM `payouts` ORDER BY `timestamp` DESC LIMIT 20");
+
+        $result.="<h2>All payouts</h2>\n";
+        $result.="<table class='data_table'>\n";
+        $result.="<tr><th>Address</th><th>Total</th><th>Transaction</th><th>Timestamp</th></tr>\n";
+
+        foreach($payout_data_array as $payout_data) {
+                $currency_code=$payout_data['currency_code'];
+                $address=$payout_data['address'];
+                $payment_id=$payout_data['payment_id'];
+                $hashes=$payout_data['hashes'];
+                $rate_per_mhash=$payout_data['rate_per_mhash'];
+                $amount=$payout_data['amount'];
+                $payout_fee=$payout_data['payout_fee'];
+                $project_fee=$payout_data['project_fee'];
+                $total=$payout_data['total'];
+                $tx_id=$payout_data['tx_id'];
+                $timestamp=$payout_data['timestamp'];
+
+                $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
+                $total=sprintf("%0.8f",$total);
+
+                if($payment_id!='') $address.="<br>PID: $payment_id";
+
+                $address=html_address_link($currency_code,$address);
+                $tx_id=html_tx_link($currency_code,$tx_id);
+
+                $result.="<tr><td>$address</td><td>$total $currency_code</td><td>$tx_id</td><td>$timestamp</td></tr>\n";
+        }
+        $result.="</table>\n";
+        return $result;
+}
+
+function html_log_section_admin() {
+        $result="";
+        $result.="<h2>Log</h2>\n";
+        $data_array=db_query_to_array("SELECT `message`,`timestamp` FROM `log` ORDER BY `timestamp` DESC LIMIT 100");
+
+        $result.="<table class='data_table'>\n";
+        $result.="<tr><th>Timestamp</th><th>Message</th></tr>\n";
+        foreach($data_array as $row) {
+                $timestamp=$row['timestamp'];
+                $message=$row['message'];
+                $message_html=htmlspecialchars($message);
+                $result.="<tr><td>$timestamp</td><td>$message_html</td></tr>\n";
+        }
+        $result.="</table>\n";
+        return $result;
+}
+
+// Registered users page for admin
+function html_registered_users_admin() {
+        $result="";
+        $result.="<h2>Registered users:</h2>\n";
+        $data_array=db_query_to_array("SELECT `uid`,`username`,`timestamp`,IF(DATE_SUB(NOW(),INTERVAL 1 DAY)<`timestamp`,1,0) AS is_alive FROM `users` WHERE DATE_SUB(NOW(),INTERVAL 1 DAY)<`timestamp`");
+
+        $result.="<table class='data_table'>\n";
+        $result.="<tr><th>Username</th><th>Balance</th><th>Mined</th><th>Withdrawn</th><th>Bonus</th><th>Ref L1</th><th>Ref L2</th><th>Ref Users</th><th>Last appear</th></tr>\n";
+        foreach($data_array as $row) {
+                $user_uid=$row['uid'];
+                $username=$row['username'];
+                $is_alive=$row['is_alive'];
+
+                $username_html=html_escape($username);
+
+                $user_uid_escaped=db_escape($user_uid);
+                $ref_users=db_query_to_variable("SELECT count(*) FROM `users` WHERE `ref_id`='$user_uid_escaped'");
+                if($ref_users=='') $ref_users=0;
+
+                $balance_data=get_user_balance_detail($user_uid);
+                $hashes=$balance_data['balance'];
+                $mined=$balance_data['mined'];
+                $withdrawn=$balance_data['withdrawn'];
+                $bonus=$balance_data['bonus'];
+                $ref1=$balance_data['ref1'];
+                $ref2=$balance_data['ref2'];
+                $timestamp=$row['timestamp'];
+
+                if($is_alive) $tr_class="class='alive'";
+                else $tr_class='';
+
+                $result.="<tr $tr_class><td>$username_html</td><td>$hashes</td><td>$mined</td><td>$withdrawn</td><td>$bonus</td><td>$ref1</td><td>$ref2</td><td>$ref_users</td><td>$timestamp</td></tr>\n";
+        }
+        $result.="</table>\n";
         return $result;
 }
 
@@ -181,7 +313,6 @@ _END;
 
         $result.="<h2>Supported coins</h2>\n";
         $result.="<p>Fee depends on the coin</p>\n";
-        $result.="<center>\n";
         $result.="<table class=currency_grid>\n";
         $n=0;
         foreach($currency_data_array as $currency_data) {
@@ -203,7 +334,6 @@ _END;
                 }
 
         $result.="</table>\n";
-        $result.="</center>\n";
 
         return $result;
 }
@@ -213,7 +343,6 @@ function html_select_your_coin($user_hashes) {
         $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`rate_per_mhash`,`img_url`,`payment_id_field` FROM `currency` ORDER BY `currency_code` ASC");
 
         $result.="<h2>Select your coin:</h2>\n";
-        $result.="<center>\n";
         $result.="<table class=currency_grid>\n";
         $n=0;
         foreach($currency_data_array as $currency_data) {
@@ -244,8 +373,11 @@ function html_select_your_coin($user_hashes) {
         }
 
         $result.="</table>\n";
-        $result.="</center>\n";
         return $result;
+}
+
+function html_button_admin_block() {
+        return "<p><input type=button value='User mode' onClick=\"set_coin('')\"> <input type=button value='Admin mode' onClick=\"set_coin('admin')\"></p>\n";
 }
 
 function html_results_in_coin($user_uid,$user_hashes,$coin) {
@@ -292,7 +424,6 @@ FROM `currency` WHERE `currency_code`='$coin_escaped' ORDER BY `currency_code` A
                 $withdraw_form='Nothing to withdraw';
         }
 
-        $result.="<center>\n";
         $result.="<p><input type=button value='Change coin' onClick=\"set_coin('');\"></p>\n";
         $result.=<<<_END
 <form name=withdraw method=POST>
@@ -321,7 +452,6 @@ _END;
         }
         $result.="</table>\n";
         $result.="</form>";
-        $result.="</center>\n";
 
         return $result;
 }
