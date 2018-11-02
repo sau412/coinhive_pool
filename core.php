@@ -282,6 +282,20 @@ VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$addres
         return $message;
 }
 
+function is_admin($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $is_admin=db_query_to_variable("SELECT `is_admin` FROM `users` WHERE `uid`='$user_uid_escaped'");
+        if($is_admin) return TRUE;
+        else return FALSE;
+}
+
+function admin_set_tx_id($payout_uid,$tx_id) {
+        $message="TX ID set";
+        $payout_uid_escaped=db_escape($payout_uid);
+        $tx_id_escaped=db_escape($tx_id);
+        db_query("UPDATE `payouts` SET `tx_id`='$tx_id_escaped' WHERE `uid`='$payout_uid'");
+}
+
 // For php 5 only variant for random_bytes is openssl_random_pseudo_bytes from openssl lib
 if(!function_exists("random_bytes")) {
         function random_bytes($n) {
