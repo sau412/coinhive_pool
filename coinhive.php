@@ -4,6 +4,7 @@ $coinhive_get_balance_url="https://api.coinhive.com/user/balance";
 $coinhive_withdraw_balance_url="https://api.coinhive.com/user/withdraw";
 $coinhive_reset_balance_url="https://api.coinhive.com/user/reset";
 $coinhive_get_payout_info_url="https://api.coinhive.com/stats/payout";
+$coinhive_get_stats_site_info_url="https://api.coinhive.com/stats/site";
 
 // Get balance of specific user
 // Returns class with total, withdrawn and balance
@@ -68,6 +69,23 @@ function coinhive_get_payout_info() {
         curl_setopt($ch,CURLOPT_FOLLOWLOCATION,TRUE);
         curl_setopt($ch,CURLOPT_POST,FALSE);
         curl_setopt($ch,CURLOPT_URL,$coinhive_get_payout_info_url."?secret=$coinhive_private_key");
+        $result = curl_exec ($ch);
+        if($result=="") return 0;
+        $data=json_decode($result);
+        return $data;
+}
+
+// Get site info
+function coinhive_get_stats_site_info() {
+        global $coinhive_private_key;
+        global $coinhive_get_stats_site_info_url;
+
+        // Setup cURL
+        $ch=curl_init();
+        curl_setopt($ch,CURLOPT_RETURNTRANSFER,TRUE);
+        curl_setopt($ch,CURLOPT_FOLLOWLOCATION,TRUE);
+        curl_setopt($ch,CURLOPT_POST,FALSE);
+        curl_setopt($ch,CURLOPT_URL,$coinhive_get_stats_site_info_url."?secret=$coinhive_private_key");
         $result = curl_exec ($ch);
         if($result=="") return 0;
         $data=json_decode($result);
