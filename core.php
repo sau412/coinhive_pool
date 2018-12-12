@@ -16,10 +16,10 @@ function write_log($message) {
 
 // Checks is string contains only ASCII symbols
 function validate_ascii($string) {
-        if(strlen($string)>100) return FALSE;
+        if(strlen($string)>500) return FALSE;
         if(is_string($string)==FALSE) return FALSE;
         for($i=0;$i!=strlen($string);$i++) {
-                if(ord($string[$i])<32 || ord($string[$i])>127) return FALSE;
+                if((ord($string[$i])<32 && !in_array(ord($string[$i]),array(10,13))) || ord($string[$i])>127) return FALSE;
         }
         return TRUE;
 }
@@ -44,6 +44,7 @@ function get_user_balance_detail($user_uid) {
 
         $user_uid_escaped=db_escape($user_uid);
         $mined=db_query_to_variable("SELECT `mined` FROM `users` WHERE `uid`='$user_uid_escaped'");
+        $dualmined=db_query_to_variable("SELECT `dualmined` FROM `users` WHERE `uid`='$user_uid_escaped'");
         $bonus=db_query_to_variable("SELECT `bonus` FROM `users` WHERE `uid`='$user_uid_escaped'");
         $withdrawn=db_query_to_variable("SELECT `withdrawn` FROM `users` WHERE `uid`='$user_uid_escaped'");
         $ref1=db_query_to_variable("SELECT SUM(`mined`) FROM `users` WHERE `ref_id`='$user_uid_escaped'");
@@ -54,10 +55,11 @@ function get_user_balance_detail($user_uid) {
 
         $ref_total=$ref1+$ref2;
 
-        $balance=$mined+$ref1+$ref2+$bonus-$withdrawn;
+        $balance=$mined+$dualmined+$ref1+$ref2+$bonus-$withdrawn;
 
         return array(
                 "mined"=>$mined,
+                "dualmined"=>$dualmined,
                 "bonus"=>$bonus,
                 "withdrawn"=>$withdrawn,
                 "ref_total"=>$ref_total,
@@ -231,6 +233,7 @@ function user_withdraw($session,$user_uid,$currency_code,$payout_address,$paymen
         $balance_info=get_user_balance_detail($user_uid);
 
         $hashes_mined=$balance_info['mined'];
+        $hashes_dualmined=$balance_info['dualmined'];
         $hashes_withdrawn=$balance_info['withdrawn'];
         $hashes_bonus=$balance_info['bonus'];
         $hashes_ref=$balance_info['ref_total'];
@@ -257,10 +260,10 @@ function user_withdraw($session,$user_uid,$currency_code,$payout_address,$paymen
                         $hashes_withdrawn_new=$hashes_withdrawn+$hashes_balance;
                         db_query("UPDATE `users` SET `withdrawn`='$hashes_withdrawn_new',`cooldown`=NOW() WHERE `uid`='$user_uid_escaped'");
 
-                        write_log("Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn') coin '$currency_code' total '$total' address '$payout_address'");
+                        write_log("Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' dualmined '$hashes_dualmined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn') coin '$currency_code' total '$total' address '$payout_address'");
 
                         email_add($email_notify,"Withdraw '$username' '$total' '$currency_code'",
-                                "Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn')
+                                "Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' dualmined '$hashes_dualmined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn')
 coin '$currency_code' total '$total' address '$payout_address'");
 
                         $address_escaped=db_escape($payout_address);
@@ -270,8 +273,8 @@ coin '$currency_code' total '$total' address '$payout_address'");
                         $project_fee_escaped=db_escape($project_fee);
                         $hashes_escaped=db_escape($hashes_balance);
 
-                        db_query("INSERT INTO `payouts` (`session`,`user_uid`,`currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`)
-VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$address_escaped','$payment_id_escaped','$hashes_escaped','$rate_per_mhash_escaped','$amount_escaped','$payout_fee_escaped','$project_fee_escaped','$total_escaped')");
+                        db_query("INSERT INTO `payouts` (`session`,`user_uid`,`currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`status`)
+VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$address_escaped','$payment_id_escaped','$hashes_escaped','$rate_per_mhash_escaped','$amount_escaped','$payout_fee_escaped','$project_fee_escaped','$total_escaped','requested')");
 
                         $message="Request sent";
                 } else {
@@ -289,11 +292,93 @@ function is_admin($user_uid) {
         else return FALSE;
 }
 
-function admin_set_tx_id($payout_uid,$tx_id) {
+function admin_set_tx_id($payout_uid,$tx_id,$status) {
         $message="TX ID set";
         $payout_uid_escaped=db_escape($payout_uid);
         $tx_id_escaped=db_escape($tx_id);
         db_query("UPDATE `payouts` SET `tx_id`='$tx_id_escaped' WHERE `uid`='$payout_uid'");
+        payout_set_status($payout_uid,$status);
+}
+
+// Set payout status
+function payout_cancel($user_uid,$payout_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $payout_uid_escaped=db_escape($payout_uid);
+        $status="cancelled";
+        $status_escaped=db_escape($status);
+
+        // Only requested can be cancelled
+        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('requested')");
+
+        // Update withdrawn
+        update_withdrawn($user_uid);
+}
+
+// Set payout status
+function payout_set_status($payout_uid,$status) {
+        $payout_uid_escaped=db_escape($payout_uid);
+        $status_escaped=db_escape($status);
+
+        switch($status) {
+                case "cancelled":
+                        // Only requested can be cancelled
+                        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `status` IN ('requested','processing')");
+                        break;
+                case "processing":
+                        // Only requested can be processing
+                        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `status` IN ('requested')");
+                        break;
+                case "sent":
+                        // Sent only after processing
+                        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `status` IN ('processing')");
+                        break;
+                case "error":
+                        // Error for all except cancelled
+                        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `status` IN ('processing','requested')");
+                        break;
+        }
+
+        // Update user balance
+        $user_uid=db_query_to_variable("SELECT `user_uid` FROM `payouts` WHERE `uid`='$payout_uid_escaped'");
+        update_withdrawn($user_uid);
+}
+
+function update_withdrawn($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $withdrawn=db_query_to_variable("SELECT SUM(`hashes`) FROM `payouts` WHERE `user_uid`='$user_uid_escaped' AND `status` IN ('requested','processing','sent')");
+        $withdrawn_escaped=db_escape($withdrawn);
+        db_query("UPDATE `users` SET `withdrawn`='$withdrawn_escaped' WHERE `uid`='$user_uid_escaped'");
+}
+
+function request_coin($user_uid,$message) {
+        $username=get_username_by_uid($user_uid);
+        write_log("Feedback: '$message' username '$username'");
+        return "Request sent";
+}
+
+function chat_add_message($user_uid,$user_message) {
+        $username=get_username_by_uid($user_uid);
+        $user_uid_escaped=db_escape($user_uid);
+        $user_message_escaped=db_escape($user_message);
+        db_query("INSERT INTO `messages` (`user_uid`,`message`) VALUES ('$user_uid_escaped','$user_message_escaped')");
+        write_log("Chat: username '$username' message '$user_message'");
+        return "";
+}
+
+function recaptcha_check($response) {
+        global $recaptcha_private_key;
+        $recaptcha_url="https://www.google.com/recaptcha/api/siteverify";
+        $query="secret=$recaptcha_private_key&response=$response&remoteip=".$_SERVER['REMOTE_ADDR'];
+        $ch=curl_init();
+        curl_setopt($ch,CURLOPT_RETURNTRANSFER,TRUE);
+        curl_setopt($ch,CURLOPT_FOLLOWLOCATION,TRUE);
+        curl_setopt($ch,CURLOPT_POST,TRUE);
+        curl_setopt($ch, CURLOPT_POSTFIELDS,$query);
+        curl_setopt($ch,CURLOPT_URL,$recaptcha_url);
+        $result = curl_exec ($ch);
+        $data = json_decode($result);
+        if($data->success) return TRUE;
+        else return FALSE;
 }
 
 // For php 5 only variant for random_bytes is openssl_random_pseudo_bytes from openssl lib
