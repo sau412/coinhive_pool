@@ -33,10 +33,10 @@ if(isset($_GET['miner'])) {
 $user_uid="";
 $logged_in=FALSE;
 
-if(isset($_GET['coin'])) $coin=stripslashes($_GET['coin']);
-else $coin='';
+if(isset($_GET['part'])) $part=stripslashes($_GET['part']);
+else $part='';
 
-$coin_html=html_escape($coin);
+$part_html=html_escape($part);
 
 // Get session (create new if not exists), user_uid, token
 $session=get_session();
@@ -61,14 +61,30 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
         else if(isset($_POST['action'])) $action=$_POST['action'];
 
         if($action=="register") {
-                $login=stripslashes($_POST['login']);
-                $password=stripslashes($_POST['password']);
-                $ref_id=stripslashes($_POST['ref_id']);
-                if($ref_id=='') $ref_id=0;
+                if(isset($_POST['g-recaptcha-response'])) {
+                        $recaptcha_response=stripslashes($_POST['g-recaptcha-response']);
+                        if(recaptcha_check($recaptcha_response)) {
+                                $login=stripslashes($_POST['login']);
+                                $password=stripslashes($_POST['password']);
+                                $ref_id=stripslashes($_POST['ref_id']);
+                                if($ref_id=='') $ref_id=0;
 
-                $message=user_register_or_login($session,$login,$password,$ref_id);
+                                $message=user_register_or_login($session,$login,$password,$ref_id);
+                        } else {
+                                $message="Incorrect captcha";
+                        }
+                } else {
+                        $message="Incorrect captcha";
+                }
         } else if($action=="logout") {
                 user_logout($session);
+        } else if($logged_in==TRUE && $action=="request_coin") {
+                $coin=$_POST['request_coin'];
+                $message=request_coin($user_uid,$coin);
+        } else if($logged_in==TRUE && $action=="chat_message") {
+                $user_message=stripslashes($_POST['message']);
+                $message=chat_add_message($user_uid,$user_message);
+                $return_to="?part=user_chat";
         } else if($logged_in==TRUE && $action=="withdraw") {
                 $currency_code=stripslashes($_POST['currency_code']);
                 $payout_address=stripslashes($_POST['payout_address']);
@@ -83,7 +99,11 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 $message=admin_set_tx_id($payout_uid,$tx_id);
         }
         setcookie("message",$message);
-        header("Location: ./");
+        if(isset($return_to)) {
+                header("Location: ./$return_to");
+        } else {
+                header("Location: ./");
+        }
         die();
 }
 
@@ -110,7 +130,7 @@ if(isset($_GET['json'])) {
 
                 // Common information
                 $user_hashes=$new_balance_data['balance'];
-                if($coin=='') {
+                if($part=='') {
                         echo html_select_your_coin($user_hashes);
 
                         // Achievements
@@ -121,12 +141,16 @@ if(isset($_GET['json'])) {
 
                         // User payouts
                         echo html_payouts_section($user_uid);
-                } else if(is_admin($user_uid) && $coin=="admin") {
+                } else if($part=="user_chat") {
+                        echo html_chat();
+                } else if(is_admin($user_uid) && $part=="admin_users") {
                         echo html_registered_users_admin();
+                } else if(is_admin($user_uid) && $part=="admin_payouts") {
                         echo html_payouts_section_admin();
+                } else if(is_admin($user_uid) && $part=="admin_log") {
                         echo html_log_section_admin();
                 } else {
-                        echo html_results_in_coin($user_uid,$user_hashes,$coin);
+                        echo html_results_in_coin($user_uid,$user_hashes,$part);
 
                         // Achievements
                         echo html_achievements_section($user_uid);
@@ -154,11 +178,17 @@ if($logged_in) {
 
         // Coinhive miner
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
+
+        echo html_jsecoin_miner($coinhive_id);
         echo html_coinhive_frame($coinhive_id);
 
         // Balance information
         echo html_balance_big($user_uid);
-        if(is_admin($user_uid)) echo html_button_admin_block();
+        if(is_admin($user_uid)) {
+                echo html_button_admin_block();
+        } else {
+                echo html_button_user_block();
+        }
         echo html_mininig_info_block();
 
 // If not logged in, show common information
