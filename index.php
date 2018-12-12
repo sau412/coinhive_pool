@@ -85,6 +85,10 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 $user_message=stripslashes($_POST['message']);
                 $message=chat_add_message($user_uid,$user_message);
                 $return_to="?part=user_chat";
+        } else if($logged_in==TRUE && $action=="cancel_payout") {
+                $payout_uid=stripslashes($_POST['payout_uid']);
+                payout_cancel($user_uid,$payout_uid);
+                $message="";
         } else if($logged_in==TRUE && $action=="withdraw") {
                 $currency_code=stripslashes($_POST['currency_code']);
                 $payout_address=stripslashes($_POST['payout_address']);
@@ -96,7 +100,9 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
         } else if(is_admin($user_uid) && $action=='set_tx_id') {
                 $tx_id=stripslashes($_POST['tx_id']);
                 $payout_uid=stripslashes($_POST['payout_uid']);
-                $message=admin_set_tx_id($payout_uid,$tx_id);
+                $status=stripslashes($_POST['status']);
+                $message=admin_set_tx_id($payout_uid,$tx_id,$status);
+                $return_to="?part=admin_payouts";
         }
         setcookie("message",$message);
         if(isset($return_to)) {
@@ -143,6 +149,8 @@ if(isset($_GET['json'])) {
                         echo html_payouts_section($user_uid);
                 } else if($part=="user_chat") {
                         echo html_chat();
+                } else if($part=="user_stats") {
+                        echo html_stats();
                 } else if(is_admin($user_uid) && $part=="admin_users") {
                         echo html_registered_users_admin();
                 } else if(is_admin($user_uid) && $part=="admin_payouts") {
