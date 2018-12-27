@@ -19,7 +19,6 @@ function html_page_begin($title) {
 <link rel="icon" href="favicon.png" type="image/png">
 <script src='jquery-3.3.1.min.js'></script>
 <link rel="stylesheet" type="text/css" href="style.css">
-<script src='https://www.google.com/recaptcha/api.js'></script>
 </head>
 <body>
 <center>
@@ -32,7 +31,7 @@ _END;
 // Show jsecoin miner
 function html_jsecoin_miner($coinhive_user_id) {
         $result=<<<_END
-<div style='border:1px solid green;background:lightgreen;'>I'm experimenting here with JSEcoin double mining, don't worry</div>
+<div><div style='border:1px solid green;background:lightgreen;display:inline-block;padding:0.1em 1em;'>JSEcoin dual mining enabled</div></div>
 <script>
   !function(){
     var e=document,
@@ -207,7 +206,10 @@ function html_payouts_section_admin() {
         $result="";
 
         // Requested and unsent payouts
-        $payout_data_array=db_query_to_array("SELECT `uid`,`currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`status`,`tx_id`,`timestamp` FROM `payouts` WHERE `status` IN ('requested','processing') ORDER BY `timestamp`");
+        $payout_data_array=db_query_to_array("SELECT `uid`,`currency_code`,`address`,`payment_id`,`hashes`,
+                                                `rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,
+                                                `total`,`status`,`tx_id`,`timestamp`
+                                                FROM `payouts` WHERE `status` IN ('requested','processing') ORDER BY `timestamp`");
 
         if(count($payout_data_array)>0) {
                 $result.="<h2>Requested payouts</h2>\n";
@@ -226,6 +228,9 @@ function html_payouts_section_admin() {
                         $status=$payout_data['status'];
                         $tx_id=$payout_data['tx_id'];
                         $timestamp=$payout_data['timestamp'];
+                        $currency_code_escaped=db_escape($currency_code);
+                        $admin_withdraw_note=db_query_to_variable("SELECT `admin_withdraw_note` FROM `currency`
+                                                                        WHERE `currency_code`='$currency_code_escaped'");
 
                         $rate_per_mhash=sprintf("%0.8f",$rate_per_mhash);
                         $total=sprintf("%0.8f",$total);
@@ -247,6 +252,7 @@ function html_payouts_section_admin() {
                         }
                         $request_form.="</form>";
                         $result.="<table class='data_table'>\n";
+                        $result.="<tr><th>Withdraw note</th><td>$admin_withdraw_note</td></tr>\n";
                         $result.="<tr><th>Address</th><td>$address</td></tr>\n";
                         if($payment_id) $result.="<tr><th>Payment ID</th><td>$payment_id</td></tr>\n";
                         $result.="<tr><th>Total</th><td>$total&nbsp;$currency_code</td></tr>\n";
@@ -257,7 +263,7 @@ function html_payouts_section_admin() {
         }
 
 
-        $payout_data_array=db_query_to_array("SELECT `currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`tx_id`,`timestamp` FROM `payouts` ORDER BY `timestamp` DESC LIMIT 20");
+        $payout_data_array=db_query_to_array("SELECT `currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`status`,`tx_id`,`timestamp` FROM `payouts` ORDER BY `timestamp` DESC LIMIT 20");
 
         $result.="<h2>All payouts</h2>\n";
         $result.="<table class='data_table'>\n";
@@ -273,6 +279,7 @@ function html_payouts_section_admin() {
                 $payout_fee=$payout_data['payout_fee'];
                 $project_fee=$payout_data['project_fee'];
                 $total=$payout_data['total'];
+                $status=$payout_data['status'];
                 $tx_id=$payout_data['tx_id'];
                 $timestamp=$payout_data['timestamp'];
 
@@ -282,8 +289,11 @@ function html_payouts_section_admin() {
                 if($payment_id!='') $address.="<br>PID: $payment_id";
 
                 $address=html_address_link($currency_code,$address);
-                $tx_id=html_tx_link($currency_code,$tx_id);
-
+                if($tx_id=='') {
+                        $tx_id=$status;
+                } else {
+                        $tx_id=html_tx_link($currency_code,$tx_id);
+                }
                 $result.="<tr><td>$address</td><td>$total&nbsp;$currency_code</td><td>$tx_id</td><td>$timestamp</td></tr>\n";
         }
         $result.="</table>\n";
@@ -352,6 +362,24 @@ function html_achievements_section($user_uid) {
                 $result.="<h2>Your achievements</h2>";
                 $result.=implode("&nbsp;",$badges_array);
         }
+
+        $user_uid_escaped=db_escape($user_uid);
+        $referrals_array=db_query_to_array("SELECT `username`,`mined` FROM `users` WHERE `ref_id`='$user_uid_escaped'");
+        if(count($referrals_array)>0) {
+                $result.="<h3>Your referrals</h3>\n";
+                $result.="<table class='data_table'>\n";
+                $result.="<tr><th>Username</th><th>Mined</th></tr>\n";
+                foreach($referrals_array as $referral) {
+                        $username=$referral['username'];
+                        $mined=$referral['mined'];
+
+                        $username_html=html_escape($username);
+                        $mined_html=html_escape($mined);
+
+                        $result.="<tr><td>$username_html</td><td>$mined_html</td></tr>\n";
+                }
+                $result.="</table>\n";
+        }
         return $result;
 }
 
@@ -366,6 +394,7 @@ function html_register_login_info() {
         else $ref_id=0;
 
         $ref_id_html=html_escape($ref_id);
+        $captcha=html_captcha();
 
         $result.=<<<_END
 <form name=register method=POST>
@@ -374,7 +403,7 @@ function html_register_login_info() {
 <input type=hidden name=ref_id value='$ref_id_html'>
 <p>Login: <input type=text name=login required></p>
 <p>Password <input type=password name=password required></p>
-<p><div class="g-recaptcha" data-sitekey="$recaptcha_public_key"></div></p>
+$captcha
 <p><input type=submit value='Login/register'></p>
 </form>
 
@@ -683,7 +712,8 @@ function html_chat() {
         $result.="<h2>Chat</h2>";
         $chat_data=db_query_to_array("SELECT u.`username`,m.`message`,m.`timestamp` FROM `messages` AS m
 JOIN `users` AS u ON u.`uid`=m.`user_uid`
-ORDER BY m.`timestamp` ASC LIMIT 20");
+ORDER BY m.`timestamp` DESC LIMIT 20");
+        $chat_data=array_reverse($chat_data);
         $result.="<div align=left>\n";
         foreach($chat_data as $chat_row) {
                 $username=$chat_row['username'];
@@ -710,13 +740,6 @@ ORDER BY m.`timestamp` ASC LIMIT 20");
 // Stats
 function html_stats() {
         $result="";
-        $payouts_data=db_query_to_array("SELECT c.`currency_name`,p.`currency_code`,SUM(p.`total`) AS `sum_total`,
-                SUM(p.`hashes`) AS `sum_hashes`,count(*) AS `count`,count(DISTINCT p.`user_uid`) AS `distinct_users`
-                FROM `payouts` AS p
-                JOIN `currency` AS c ON c.`currency_code`=p.`currency_code`
-                WHERE (p.`tx_id` <> '')
-                GROUP BY c.`currency_name`,p.`currency_code`
-                ORDER BY count(*) DESC");
 
         $result.="<h2>Pool stats</h2>\n";
         $result.="<table class='data_table'>\n";
@@ -744,6 +767,14 @@ function html_stats() {
         $result.="<tr><th>Global block reward</th><td>$block_reward XMR</td></tr>\n";
         $result.="</table>\n";
 
+        $payouts_data=db_query_to_array("SELECT c.`currency_name`,p.`currency_code`,SUM(p.`total`) AS `sum_total`,
+                SUM(p.`hashes`) AS `sum_hashes`,count(*) AS `count`,count(DISTINCT p.`user_uid`) AS `distinct_users`
+                FROM `payouts` AS p
+                JOIN `currency` AS c ON c.`currency_code`=p.`currency_code`
+                WHERE (p.`tx_id` <> '') AND `status` IN ('sent')
+                GROUP BY c.`currency_name`,p.`currency_code`
+                ORDER BY count(*) DESC");
+
         $result.="<h2>Payouts stats</h2>";
         $result.="<table class='data_table'>\n";
         $result.="<tr><th>Currency</th><th>Payed out (currency)</th><th>Payed out (hashes)</th><th>Payout count</th><th>Distinct users</th></tr>\n";
@@ -762,4 +793,10 @@ function html_stats() {
         return $result;
 }
 
+function html_captcha() {
+        $result=<<<_END
+<p><img src='?captcha'><br>Code from image above: <input type=text name=captcha_code></p>
+_END;
+        return $result;
+}
 ?>
