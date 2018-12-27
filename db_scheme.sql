@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `currency` (
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`),
   UNIQUE KEY `currency_code` (`currency_code`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=110 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `email` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
@@ -30,14 +30,22 @@ CREATE TABLE IF NOT EXISTS `email` (
   `is_success` int(11) NOT NULL DEFAULT '0',
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=79 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `log` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
   `message` text COLLATE utf8_unicode_ci NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=377 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `messages` (
+  `uid` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_uid` bigint(20) NOT NULL,
+  `message` text CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uid`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
 
 CREATE TABLE IF NOT EXISTS `payouts` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
@@ -52,21 +60,25 @@ CREATE TABLE IF NOT EXISTS `payouts` (
   `payout_fee` double NOT NULL,
   `project_fee` double NOT NULL,
   `total` double NOT NULL,
+  `wallet_send_uid` bigint(20) DEFAULT NULL,
+  `status` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `tx_id` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`uid`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=83 ;
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uid`),
+  KEY `status` (`status`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `sessions` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
   `session` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `token` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  `captcha` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `user_uid` int(11) DEFAULT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`),
   UNIQUE KEY `session` (`session`),
   UNIQUE KEY `token` (`token`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=638 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
@@ -74,14 +86,17 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `coinhive_id` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
   `mined` bigint(20) NOT NULL DEFAULT '0',
+  `dualmined` bigint(20) NOT NULL DEFAULT '0',
   `withdrawn` bigint(20) NOT NULL DEFAULT '0',
   `bonus` bigint(20) NOT NULL DEFAULT '0',
+  `comment` text COLLATE utf8_unicode_ci NOT NULL,
+  `jsecoin` int(11) NOT NULL DEFAULT '0',
   `cooldown` datetime DEFAULT NULL,
   `ref_id` int(11) DEFAULT NULL,
   `is_admin` int(11) NOT NULL DEFAULT '0',
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=62 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `variables` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
@@ -90,4 +105,4 @@ CREATE TABLE IF NOT EXISTS `variables` (
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
