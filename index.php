@@ -5,6 +5,7 @@ require_once("core.php");
 require_once("coinhive.php");
 require_once("email.php");
 require_once("html.php");
+require_once("captcha.php");
 
 // Only ASCII parameters allowed
 foreach($_GET as $key => $value) {
@@ -46,6 +47,12 @@ $token=get_user_token_by_session($session);
 if(isset($user_uid) && $user_uid!=0) $logged_in=TRUE;
 else $logged_in=FALSE;
 
+// Captcha
+if(isset($_GET['captcha'])) {
+        captcha_show($session);
+        die();
+}
+
 // Actions handle
 if(isset($_POST['action']) || isset($_GET['action'])) {
         $message='';
@@ -61,19 +68,17 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
         else if(isset($_POST['action'])) $action=$_POST['action'];
 
         if($action=="register") {
-                if(isset($_POST['g-recaptcha-response'])) {
-                        $recaptcha_response=stripslashes($_POST['g-recaptcha-response']);
-                        if(recaptcha_check($recaptcha_response)) {
-                                $login=stripslashes($_POST['login']);
-                                $password=stripslashes($_POST['password']);
-                                $ref_id=stripslashes($_POST['ref_id']);
-                                if($ref_id=='') $ref_id=0;
+                $captcha_code=$_POST['captcha_code'];
+                if(captcha_check($session,$captcha_code)) {
+                        captcha_regenerate($session);
+                        $login=stripslashes($_POST['login']);
+                        $password=stripslashes($_POST['password']);
+                        $ref_id=stripslashes($_POST['ref_id']);
+                        if($ref_id=='') $ref_id=0;
 
-                                $message=user_register_or_login($session,$login,$password,$ref_id);
-                        } else {
-                                $message="Incorrect captcha";
-                        }
+                        $message=user_register_or_login($session,$login,$password,$ref_id);
                 } else {
+                        captcha_regenerate($session);
                         $message="Incorrect captcha";
                 }
         } else if($action=="logout") {
