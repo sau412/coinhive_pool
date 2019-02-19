@@ -59,8 +59,9 @@ foreach($currency_data_array as $currency_data) {
         $uid_escaped=db_escape($uid);
         $image_url_escaped=db_escape($image_url);
         $price_escaped=db_escape($price);
+        $btc_per_coin_escaped=db_escape($btc_per_coin);
 
-        db_query("UPDATE `currency` SET `rate_per_mhash`='$price_escaped',`img_url`='$image_url_escaped' WHERE `uid`='$uid_escaped'");
+        db_query("UPDATE `currency` SET `rate_per_mhash`='$price_escaped',`img_url`='$image_url_escaped',`btc_per_coin`='$btc_per_coin_escaped' WHERE `uid`='$uid_escaped'");
         echo "$currency_name ($currency_code) updated, price: $price\n";
 }
 
