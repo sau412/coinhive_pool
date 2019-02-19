@@ -3,6 +3,7 @@ require_once("settings.php");
 require_once("db.php");
 require_once("core.php");
 require_once("coinhive.php");
+require_once("coinimp.php");
 require_once("email.php");
 require_once("html.php");
 require_once("captcha.php");
@@ -28,6 +29,38 @@ if(isset($_GET['miner'])) {
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
         $miner_form=html_coinhive_frame($coinhive_id);
         echo $miner_form;
+        die();
+} else if(isset($_GET['miner_coinimp_web'])) {
+        $user_uid=stripslashes($_GET['miner_coinimp_web']);
+        $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
+        $miner_form=html_coinimp_frame("web",$coinhive_id);
+        echo '<link rel="stylesheet" type="text/css" href="style.css">';
+        echo $miner_form;
+        echo <<<_END
+<script>
+update_stats_repeat();
+function update_stats_repeat() {
+        web_update_stats();
+        setTimeout('update_stats_repeat()',1000);
+}
+</script>
+_END;
+        die();
+} else if(isset($_GET['miner_coinimp_xmr'])) {
+        $user_uid=stripslashes($_GET['miner_coinimp_xmr']);
+        $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
+        $miner_form=html_coinimp_frame("xmr",$coinhive_id);
+        echo '<link rel="stylesheet" type="text/css" href="style.css">';
+        echo $miner_form;
+        echo <<<_END
+<script>
+update_stats_repeat();
+function update_stats_repeat() {
+        xmr_update_stats();
+        setTimeout('update_stats_repeat()',1000);
+}
+</script>
+_END;
         die();
 }
 
@@ -130,19 +163,33 @@ if(isset($_GET['json'])) {
         if($logged_in==FALSE) {
                 echo html_register_login_info();
         } else {
+                //echo html_message("Updating in progress, balances will updated after. It is safe to continue mining.");
                 // Balance information
                 $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
-                $old_balance_data=get_user_balance_detail($user_uid);
-                $coinhive_balance=coinhive_get_user_balance($coinhive_id);
-                update_user_mined_balance($user_uid,$coinhive_balance);
-                $new_balance_data=get_user_balance_detail($user_uid);
+                $old_hashes=get_user_hashes($user_uid);
 
-                echo html_balance_detail($user_uid,$old_balance_data,$new_balance_data);
+                //coinimp_get_reward_info();
+                $coinhive_balance=coinhive_get_user_balance($coinhive_id);
+                $coinimp_xmr_balance=coinimp_get_user_balance("xmr",$coinhive_id);
+                $coinimp_web_balance=coinimp_get_user_balance("web",$coinhive_id);
+
+                //update_user_mined_balance($user_uid,$coinhive_balance);
+
+                update_user_results($user_uid,"Coinhive",$coinhive_balance);
+                update_user_results($user_uid,"Coinimp-XMR",$coinimp_xmr_balance);
+                update_user_results($user_uid,"Coinimp-WEB",$coinimp_web_balance);
+
+                $new_hashes=get_user_hashes($user_uid);
+
+                echo html_balance_detail($user_uid,$old_hashes,$new_hashes);
+
+                //echo html_balance_detail_coinimp($user_uid,$coinimp_xmr_balance,$coinimp_web_balance);
+
+                echo html_results_and_assets($user_uid);
 
                 // Common information
-                $user_hashes=$new_balance_data['balance'];
                 if($part=='') {
-                        echo html_select_your_coin($user_hashes);
+                        echo html_select_your_coin($user_uid);
 
                         // Achievements
                         echo html_achievements_section($user_uid);
@@ -163,7 +210,7 @@ if(isset($_GET['json'])) {
                 } else if(is_admin($user_uid) && $part=="admin_log") {
                         echo html_log_section_admin();
                 } else {
-                        echo html_results_in_coin($user_uid,$user_hashes,$part);
+                        echo html_results_in_coin($user_uid,$part);
 
                         // Achievements
                         echo html_achievements_section($user_uid);
@@ -186,14 +233,26 @@ if(isset($message) && $message!='') echo $message;
 
 // If logged in, show balance info
 if($logged_in) {
+        //echo html_message("Updating in progress, balances will updated after. It is safe to continue mining.");
         // Welcome message and logout link
         echo html_welcome_logout_form($user_uid);
+
+        //if($user_uid==99) echo html_message("Hi, lglazanl, accidentally I sent you 22477 RDD, can you send 90 % of them back, please? My address is RcWWAoto8z1CWxpgp69t2xL3Cg9Bj2Lx4c");
+
+        echo html_select_miner_form($user_uid);
 
         // Coinhive miner
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
 
         echo html_jsecoin_miner($coinhive_id);
-        echo html_coinhive_frame($coinhive_id);
+
+        if(isset($_GET['coinimp_web'])) {
+                echo html_coinimp_frame("web",$coinhive_id);
+        } else if(isset($_GET['coinimp_xmr'])) {
+                echo html_coinimp_frame("xmr",$coinhive_id);
+        } else {
+                echo html_coinhive_frame($coinhive_id);
+        }
 
         // Balance information
         echo html_balance_big($user_uid);
