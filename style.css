@@ -26,6 +26,7 @@ body {
 }
 .currency_grid td:hover {
         background-color:lightblue;
+        cursor:pointer;
 }
 
 /* Tabs */
@@ -75,3 +76,13 @@ body {
         visibility: visible;
 }
 
+/* Coinimp miner style */
+.coinimp_miner {
+        background: #448aff;
+        border: #AAAAAA;
+        color: white;
+}
+
+.coinimp_miner td {
+        padding: 0.1em 1em;
+}
