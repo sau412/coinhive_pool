@@ -37,6 +37,131 @@ function set_variable($name,$value) {
         db_query("INSERT INTO `variables` (`name`,`value`) VALUES ('$name_escaped','$value_escaped') ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
 }
 
+// Set asset
+function set_user_asset($user_uid,$currency,$balance) {
+        $user_uid_escaped=db_escape($user_uid);
+        $currency_escaped=db_escape($currency);
+        $balance_escaped=db_escape($balance);
+        db_query("INSERT INTO `assets` (`user_uid`,`currency`,`balance`) VALUES ('$user_uid_escaped','$currency_escaped','$balance_escaped')
+ON DUPLICATE KEY UPDATE `balance`=VALUES(`balance`)");
+}
+
+// Get user assets
+function get_user_assets($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $assets_array=db_query_to_array("SELECT `currency`,`balance` FROM `assets` WHERE `user_uid`='$user_uid_escaped' AND `balance`>0");
+        return $assets_array;
+}
+
+// Get user assets in BTC
+function get_user_assets_btc($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $amount_btc=db_query_to_variable("SELECT SUM(a.`balance`*c.`btc_per_coin`) FROM `assets` AS a
+JOIN `currency` AS c ON c.`currency_code`=a.`currency`
+WHERE a.`user_uid`='$user_uid_escaped'");
+        return $amount_btc;
+}
+
+// Add user asset
+function add_user_asset($user_uid,$currency,$amount) {
+        $user_uid_escaped=db_escape($user_uid);
+        $currency_escaped=db_escape($currency);
+        $amount_escaped=db_escape($amount);
+        db_query("INSERT INTO `assets` (`user_uid`,`currency`,`balance`) VALUES ('$user_uid_escaped','$currency_escaped','$amount_escaped')
+ON DUPLICATE KEY UPDATE `balance`=`balance`+VALUES(`balance`)");
+}
+
+// Add ref level 1 user asset
+function add_user_asset_ref1($user_uid,$currency,$amount) {
+        global $hashes_ref_rate;
+        $user_uid_escaped=db_escape($user_uid);
+        $ref_amount=$amount*$hashes_ref_rate;
+        $ref_uid=db_query_to_variable("SELECT `ref_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
+        if($ref_uid!='') {
+                $ref_uid_escaped=db_escape($ref_uid);
+                $currency_escaped=db_escape($currency);
+                $ref_amount_escaped=db_escape($ref_amount);
+                db_query("INSERT INTO `assets` (`user_uid`,`currency`,`balance`) VALUES ('$ref_uid_escaped','$currency_escaped','$ref_amount_escaped')
+ON DUPLICATE KEY UPDATE `balance`=`balance`+VALUES(`balance`)");
+                add_user_asset_ref2($ref_uid,$currency,$amount);
+        }
+}
+
+// Add ref level 2 user asset
+function add_user_asset_ref2($user_uid,$currency,$amount) {
+        global $hashes_ref_rate_level_2;
+
+        $user_uid_escaped=db_escape($user_uid);
+        $ref_amount=$amount*$hashes_ref_rate_level_2;
+        $ref_uid=db_query_to_variable("SELECT `ref_id` FROM `users` WHERE `uid`='$user_uid_escaped'");
+        if($ref_uid!='') {
+                $ref_uid_escaped=db_escape($ref_uid);
+                $currency_escaped=db_escape($currency);
+                $ref_amount_escaped=db_escape($ref_amount);
+                db_query("INSERT INTO `assets` (`user_uid`,`currency`,`balance`) VALUES ('$ref_uid_escaped','$currency_escaped','$ref_amount_escaped')
+ON DUPLICATE KEY UPDATE `balance`=`balance`+VALUES(`balance`)");
+        }
+}
+
+
+
+// Get user results
+function get_user_results($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $results_array=db_query_to_array("SELECT `platform`,`value` FROM `results` WHERE `user_uid`='$user_uid_escaped'");
+        return $results_array;
+}
+
+// Set user results
+function set_user_results($user_uid,$platform,$new_result) {
+        $user_uid_escaped=db_escape($user_uid);
+        $platform_escaped=db_escape($platform);
+        $new_result_escaped=db_escape($new_result);
+        $old_result=db_query_to_variable("SELECT `value` FROM `results` WHERE `user_uid`='$user_uid_escaped' AND `platform`='$platform_escaped'");
+        $result_diff=$new_result-$old_result;
+        if($result_diff==0 || $new_result==0 || $new_result=='') return FALSE;
+        db_query("INSERT INTO `results` (`user_uid`,`platform`,`value`) VALUES ('$user_uid_escaped','$platform_escaped','$new_result_escaped')
+ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
+}
+
+// Update user results
+function update_user_results($user_uid,$platform,$new_result) {
+        $user_uid_escaped=db_escape($user_uid);
+        $platform_escaped=db_escape($platform);
+        $new_result_escaped=db_escape($new_result);
+        $old_result=db_query_to_variable("SELECT `value` FROM `results` WHERE `user_uid`='$user_uid_escaped' AND `platform`='$platform_escaped'");
+        if($old_result=='') $old_result=0;
+        $result_diff=$new_result-$old_result;
+        if($result_diff<=0 || $new_result==0 || $new_result=='') return FALSE;
+        db_query("UPDATE `users` SET `timestamp`=NOW() WHERE `uid`='$user_uid_escaped'");
+        db_query("INSERT INTO `results` (`user_uid`,`platform`,`value`) VALUES ('$user_uid_escaped','$platform_escaped','$new_result_escaped')
+ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
+        switch($platform) {
+                case 'Coinhive':
+                        $xmr_per_Mhash=get_variable("payoutPer1MHashes");
+                        $xmr=$result_diff*$xmr_per_Mhash/1000000;
+                        add_user_asset($user_uid,"XMR",$xmr);
+                        add_user_asset_ref1($user_uid,"XMR",$xmr);
+                        break;
+                case 'Coinimp-XMR':
+                        $coinhive_xmr_per_Mhash=get_variable("payoutPer1MHashes");
+                        $xmr_per_Mhash=0.99*get_variable("payoutPer1MHashes")/0.7;
+                        $xmr=$result_diff*$xmr_per_Mhash/1000000;
+                        add_user_asset($user_uid,"XMR",$xmr);
+                        add_user_asset_ref1($user_uid,"XMR",$xmr);
+                        break;
+                case 'Coinimp-WEB':
+                        $web_per_Mhash=get_variable("web_payoutPer1MHashes");
+                        $web=$result_diff*$web_per_Mhash/1000000;
+                        add_user_asset($user_uid,"WEB",$web);
+                        add_user_asset_ref1($user_uid,"WEB",$web);
+                        break;
+                case 'JSECoin':
+                        add_user_asset($user_uid,"JSE",$result_diff);
+                        break;
+        }
+}
+
 // Get detailed balance
 function get_user_balance_detail($user_uid) {
         global $hashes_ref_rate;
@@ -74,6 +199,13 @@ function get_user_balance($user_uid) {
         $balance_detail=get_user_balance_detail($user_uid);
 
         return $balance_detail['balance'];
+}
+
+// Get user hashes
+function get_user_hashes($user_uid) {
+        $user_uid_escaped=db_escape($user_uid);
+        $hashes=db_query_to_variable("SELECT SUM(`value`) FROM `results` WHERE `user_uid`='$user_uid_escaped'");
+        return $hashes;
 }
 
 // Get badges
@@ -142,7 +274,7 @@ function get_username_by_uid($user_uid) {
 function update_user_mined_balance($user_uid,$new_balance) {
         $user_uid_escaped=db_escape($user_uid);
         $new_balance_escaped=db_escape($new_balance);
-        db_query("UPDATE `users` SET `mined`='$new_balance_escaped' WHERE uid='$user_uid_escaped' AND `mined`<='$new_balance_escaped'");
+        //db_query("UPDATE `users` SET `mined`='$new_balance_escaped' WHERE uid='$user_uid_escaped' AND `mined`<='$new_balance_escaped'");
 }
 
 function get_session() {
@@ -230,26 +362,21 @@ function user_withdraw($session,$user_uid,$currency_code,$payout_address,$paymen
         $user_uid_escaped=db_escape($user_uid);
         $username=get_username_by_uid($user_uid);
 
-        $balance_info=get_user_balance_detail($user_uid);
-
-        $hashes_mined=$balance_info['mined'];
-        $hashes_dualmined=$balance_info['dualmined'];
-        $hashes_withdrawn=$balance_info['withdrawn'];
-        $hashes_bonus=$balance_info['bonus'];
-        $hashes_ref=$balance_info['ref_total'];
-        $hashes_balance=$balance_info['balance'];
+        $user_btc=get_user_assets_btc($user_uid);
 
         if(is_cooltime_active($user_uid)) {
                 $message="One withdraw in 15 minutes";
-        } else if($hashes_balance<=0) {
+        } else if($user_btc<=0) {
                 $message="Nothing to withdraw";
         } else {
                 $currency_code_escaped=db_escape($currency_code);
-                $rate_per_mhash=db_query_to_variable("SELECT `rate_per_mhash` FROM `currency` WHERE `currency_code`='$currency_code_escaped'");
+                $btc_per_coin=db_query_to_variable("SELECT `btc_per_coin` FROM `currency` WHERE `currency_code`='$currency_code_escaped'");
                 $payout_fee=db_query_to_variable("SELECT `payout_fee` FROM `currency` WHERE `currency_code`='$currency_code_escaped'");
                 $project_fee=db_query_to_variable("SELECT `project_fee` FROM `currency` WHERE `currency_code`='$currency_code_escaped'");
 
-                $amount=$hashes_balance*$rate_per_mhash/1000000;
+                if($btc_per_coin>0) $amount=$user_btc/$btc_per_coin;
+                else $amount=0;
+
                 $total=$amount-$payout_fee-$project_fee;
                 $amount=sprintf("%0.8f",$amount);
                 $amount_escaped=db_escape($amount);
@@ -257,14 +384,13 @@ function user_withdraw($session,$user_uid,$currency_code,$payout_address,$paymen
                 $total=sprintf("%0.8f",$total);
 
                 if($total>0) {
-                        $hashes_withdrawn_new=$hashes_withdrawn+$hashes_balance;
-                        db_query("UPDATE `users` SET `withdrawn`='$hashes_withdrawn_new',`cooldown`=NOW() WHERE `uid`='$user_uid_escaped'");
+                        // Delete user assets
+                        db_query("DELETE FROM `assets` WHERE `user_uid`='$user_uid_escaped'");
 
-                        write_log("Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' dualmined '$hashes_dualmined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn') coin '$currency_code' total '$total' address '$payout_address'");
+                        write_log("Withdraw user '$username' (assets amount '$user_btc') coin '$currency_code' total '$total' address '$payout_address'");
 
                         email_add($email_notify,"Withdraw '$username' '$total' '$currency_code'",
-                                "Withdraw user '$username' amount '$hashes_balance' (from mined '$hashes_mined' dualmined '$hashes_dualmined' ref '$hashes_ref' bonus '$hashes_bonus' withdrawn '$hashes_withdrawn')
-coin '$currency_code' total '$total' address '$payout_address'");
+                                "Withdraw user '$username' (assets amount '$user_btc') coin '$currency_code' total '$total' address '$payout_address'");
 
                         $address_escaped=db_escape($payout_address);
                         $payment_id_escaped=db_escape($payment_id);
@@ -273,8 +399,8 @@ coin '$currency_code' total '$total' address '$payout_address'");
                         $project_fee_escaped=db_escape($project_fee);
                         $hashes_escaped=db_escape($hashes_balance);
 
-                        db_query("INSERT INTO `payouts` (`session`,`user_uid`,`currency_code`,`address`,`payment_id`,`hashes`,`rate_per_mhash`,`amount`,`payout_fee`,`project_fee`,`total`,`status`)
-VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$address_escaped','$payment_id_escaped','$hashes_escaped','$rate_per_mhash_escaped','$amount_escaped','$payout_fee_escaped','$project_fee_escaped','$total_escaped','requested')");
+                        db_query("INSERT INTO `payouts` (`session`,`user_uid`,`currency_code`,`address`,`payment_id`,`amount`,`payout_fee`,`project_fee`,`total`,`status`)
+VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$address_escaped','$payment_id_escaped','$amount_escaped','$payout_fee_escaped','$project_fee_escaped','$total_escaped','requested')");
 
                         $message="Request sent";
                 } else {
@@ -307,11 +433,20 @@ function payout_cancel($user_uid,$payout_uid) {
         $status="cancelled";
         $status_escaped=db_escape($status);
 
-        // Only requested can be cancelled
-        db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('requested')");
+        $exists=db_query_to_variable("SELECT 1 FROM `payouts` WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('requested')");
 
-        // Update withdrawn
-        update_withdrawn($user_uid);
+        if($exists) {
+                // Only requested can be cancelled
+                db_query("UPDATE `payouts` SET `status`='$status_escaped' WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('requested')");
+
+                $amount=db_query_to_variable("SELECT `amount` FROM `payouts` WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('cancelled')");
+                $currency=db_query_to_variable("SELECT `currency_code` FROM `payouts` WHERE `uid`='$payout_uid' AND `user_uid`='$user_uid_escaped' AND `status` IN ('cancelled')");
+
+                $username=get_username_by_uid($user_uid);
+                write_log("Withdraw cancelled, user '$username'");
+
+                add_user_asset($user_uid,$currency,$amount);
+        }
 }
 
 // Set payout status
@@ -340,9 +475,10 @@ function payout_set_status($payout_uid,$status) {
 
         // Update user balance
         $user_uid=db_query_to_variable("SELECT `user_uid` FROM `payouts` WHERE `uid`='$payout_uid_escaped'");
-        update_withdrawn($user_uid);
+        //update_withdrawn($user_uid);
 }
 
+// Not needed anymore
 function update_withdrawn($user_uid) {
         $user_uid_escaped=db_escape($user_uid);
         $withdrawn=db_query_to_variable("SELECT SUM(`hashes`) FROM `payouts` WHERE `user_uid`='$user_uid_escaped' AND `status` IN ('requested','processing','sent')");
