@@ -19,6 +19,12 @@ $cooldown_limit=900;
 $coinhive_private_key="";
 $coinhive_public_key="";
 
+// Coinimp keys
+$coinimp_public_key="";
+$coinimp_private_key="";
+$coinimp_xmr_site_key="";
+$coinimp_web_site_key="";
+
 // Email service
 $email_api_url="https://api.smtp2go.com/v3/email/send";
 $email_api_key="";
