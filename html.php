@@ -31,6 +31,7 @@ _END;
 
 // Show jsecoin miner
 function html_jsecoin_miner($coinhive_user_id) {
+        global $pool_domain;
         $result=<<<_END
 <div><div style='border:1px solid green;background:lightgreen;display:inline-block;padding:0.1em 1em;'>JSEcoin dual mining enabled</div></div>
 <script>
@@ -41,7 +42,7 @@ function html_jsecoin_miner($coinhive_user_id) {
 
         t.type="text/javascript",
         t.async=t.defer=!0,
-        t.src="https://load.jsecoin.com/load/131746/testhivepool.arikado.ru/$coinhive_user_id/0/",
+        t.src="https://load.jsecoin.com/load/131746/$pool_domain/$coinhive_user_id/0/",
         s.parentNode.insertBefore(t,s)
   }();
 </script>
@@ -148,7 +149,13 @@ function html_page_end() {
         return <<<_END
 <input type=hidden id=do_not_update value='0'>
 <script>
-$( document ).ready(refresh_data());
+$( document ).ready(startup());
+
+function startup() {
+        let part=document.getElementById('part').value;
+        $('#mining_info').load('?json=1&part='+part);
+        refresh_data();
+}
 
 function refresh_data() {
         var part=document.getElementById('part').value;
@@ -211,12 +218,12 @@ function html_links_section($user_uid) {
 _END;
         $embedded_miner_html=html_escape($embedded_miner);
         $result.="<tr><th align=right>Your referral link:</th><td><input type=text size=50 value='$ref_link'></td>\n";
-        $result.="<tr><th align=right>Your coinhive miner link:</th><td><input type=text size=50 value='$miner_link'></td>\n";
-        $result.="<tr><th align=right>Your coinhive data-key:</th><td><input type=text size=50 value='$coinhive_public_key'></td>\n";
-        $result.="<tr><th align=right>Your coinhive data-user:</th><td><input type=text size=50 value='$coinhive_id'></td>\n";
+        //$result.="<tr><th align=right>Your coinhive miner link:</th><td><input type=text size=50 value='$miner_link'></td>\n";
+        //$result.="<tr><th align=right>Your coinhive data-key:</th><td><input type=text size=50 value='$coinhive_public_key'></td>\n";
+        //$result.="<tr><th align=right>Your coinhive data-user:</th><td><input type=text size=50 value='$coinhive_id'></td>\n";
         $result.="<tr><th align=right>Your coinimp WMR miner link:</th><td><input type=text size=50 value='$miner_coinimp_xmr_link'></td>\n";
         $result.="<tr><th align=right>Your coinimp WEB miner link:</th><td><input type=text size=50 value='$miner_coinimp_web_link'></td>\n";
-        $result.="<tr><th align=right>Sample embedded miner:</th><td><input type=text size=50 value='$embedded_miner_html'></td>\n";
+        //$result.="<tr><th align=right>Sample embedded miner:</th><td><input type=text size=50 value='$embedded_miner_html'></td>\n";
         $result.="</table>\n";
         return $result;
 }
@@ -487,8 +494,7 @@ $captcha
 
 _END;
         $result.="<p>Disclaimer: this page embeds third-party script (coinhive), use it on your own risk.</p>";
-        $result.="<p>Mine any supported coin online in the browser:</p>";
-        $result.="<p>Mine hashes, then convert mined currency into any supported coin.</p>";
+        $result.="<p>Mine any supported coin online in the browser. Convert them into any another currency.</p>";
         $result.="<p>Actual exchange rate is used. Fee depends on the coin. You can withdraw any amount above payout fee. Withdraw takes up to 24 hours.</p>";
         $result.="<p>If you want to add your favourite coin here, please contact <a href='mailto:sau412@gmail.com'>sau412@gmail.com</a></p>";
         $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_code` ASC");
@@ -531,11 +537,13 @@ function html_select_your_coin($user_uid) {
         $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_code` ASC");
 
         $result.="<h2>Select your coin:</h2>\n";
-        $result.="<table class=currency_grid>\n";
-        $n=0;
+        $result.="<table class=data_table>\n";
+        $result.="<tr><th></th><th>Currency</th><th>Symbol</th><th>Amount</th><th>BTC per coin</th><th>in BTC</th></tr>\n";
+        //$result.="<table class=currency_grid>\n";
+        //$n=0;
         foreach($currency_data_array as $currency_data) {
-                if(($n%6)==0) $result.="</tr>\n<tr>\n";
-                $n++;
+                //if(($n%6)==0) $result.="</tr>\n<tr>\n";
+                //$n++;
                 $currency_code=$currency_data['currency_code'];
                 $currency_name=$currency_data['currency_name'];
                 $img_url=$currency_data['img_url'];
@@ -548,21 +556,28 @@ function html_select_your_coin($user_uid) {
                 else $result_in_currency=0;
                 $total=$result_in_currency-$payout_fee-$project_fee;
 
+                $btc_per_coin=sprintf("%0.8F",$btc_per_coin);
+
                 $result_in_currency=sprintf("%0.8f",$result_in_currency);
                 if($total>0) $total=sprintf("%0.8f",$total);
                 else $total=sprintf("below fee",$total);
 
+                $result_in_btc=$result_in_currency*$btc_per_coin;
+                $result_in_btc=sprintf("%0.8F",$result_in_btc);
+
                 if($total>0) {
-                        $result.="<td class='currency_grid_withdrawable' onClick=\"set_part('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br><small>$total</small></td>\n";
+                        $result.="<tr class='currency_grid_withdrawable' onClick=\"set_part('$currency_code')\">";
+                        $result.="<td><img src='$img_url'></td><td>$currency_name</td><td>$currency_code</td><td>$total</td><td>$btc_per_coin</td><td>$result_in_btc</td></tr>\n";
                 } else {
-                        $result.="<td onClick=\"set_part('$currency_code')\"><img src='$img_url'><br><strong>$currency_name</strong><br><small>$total</small></td>\n";
+                        $result.="<tr class='currency_grid' onClick=\"set_part('$currency_code')\">";
+                        $result.="<td><img src='$img_url'></td><td>$currency_name</td><td>$currency_code</td><td>$total</td><td>$btc_per_coin</td><td>$result_in_btc</td></tr>\n";
                 }
         }
 
         $result.="</table>\n";
 
-        $result.="<p><form name=request method=post><input type=hidden name=token value='$token'><input type=hidden name=action value=request_coin></p>\n";
-        $result.="Feedback<br><textarea name=request_coin onFocus='disable_auto_updates();' placeholder='Ask question or request new coin'></textarea><br><input type=submit value='send'></form>\n";
+        //$result.="<p><form name=request method=post><input type=hidden name=token value='$token'><input type=hidden name=action value=request_coin></p>\n";
+        //$result.="Feedback<br><textarea name=request_coin onFocus='disable_auto_updates();' placeholder='Ask question or request new coin'></textarea><br><input type=submit value='send'></form>\n";
 
         return $result;
 }
@@ -570,9 +585,12 @@ function html_select_your_coin($user_uid) {
 function html_button_user_block() {
         return <<<_END
 <p>
-<input type=button value='Coin list' onClick="set_part('');">
+<input type=button value='Deposit' onClick="set_part('deposit');">
+<input type=button value='Withdraw' onClick="set_part('');">
 <input type=button value='Chat' onClick="set_part('user_chat');">
+<input type=button value='Payouts' onClick="set_part('payouts');">
 <input type=button value='Stats' onClick="set_part('user_stats');">
+<input type=button value='Settings' onClick="set_part('settings');">
 </p>
 
 _END;
@@ -581,11 +599,13 @@ _END;
 function html_button_admin_block() {
         return <<<_END
 <p>
-<input type=button value='Coin list' onClick="set_part('');">
+<input type=button value='Deposit' onClick="set_part('deposit');">
+<input type=button value='Withdraw' onClick="set_part('');">
 <input type=button value='Chat' onClick="set_part('user_chat');">
+<input type=button value='Payouts' onClick="set_part('payouts');">
 <input type=button value='Stats' onClick="set_part('user_stats');">
-<input type=button value='Users' onClick="set_part('admin_users');">
-<input type=button value='Payouts' onClick="set_part('admin_payouts');">
+<input type=button value='Settings' onClick="set_part('settings');">
+<input type=button value='Global payouts' onClick="set_part('admin_payouts');">
 <input type=button value='Log' onClick="set_part('admin_log');">
 </p>
 
@@ -727,7 +747,7 @@ function html_welcome_logout_form($user_uid) {
 
 function html_select_miner_form($user_uid) {
         global $token;
-        return "<p>Select your miner: <a href='?'>coinhive</a>, <a href='?coinimp_xmr'>coinimp-xmr</a>, <a href='?coinimp_web'>coinimp-web</a></p>\n";
+        return "<p>Select your miner: <a href='?coinimp_xmr'>Monero</a>, <a href='?coinimp_web'>Webchain</a></p>\n";
 }
 
 function html_balance_big($user_uid) {
@@ -803,15 +823,23 @@ function html_user_assets($user_uid) {
         $assets_array=get_user_assets($user_uid);
         if(!is_array($assets_array) || count($assets_array)==0) return "<p>Your balance is 0 (zero)</p>\n";
         $result="";
+        $result.="<p><strong>Your assets</strong></p>\n";
         $result.="<p>\n";
         $result.="<table class='data_table'>\n";
-        $result.="<tr><th>Currency</th><th>Balance</th></tr>\n";
+        $result.="<tr><th>Currency</th><th>Balance</th><th>Symbol</th><th>BTC est.</th></tr>\n";
+        $btc_sum=0;
         foreach($assets_array as $asset) {
+                $currency_name=$asset['currency_name'];
                 $currency=$asset['currency'];
                 $balance=$asset['balance'];
                 $balance=sprintf("%0.8F",$balance);
-                $result.="<tr><td>$currency</td><td>$balance</td></tr>\n";
+                $btc_est=$asset['btc_est'];
+                $btc_sum+=$btc_est;
+                $btc_est=sprintf("%0.8F",$btc_est);
+                $result.="<tr><td>$currency_name</td><td>$balance</td><td>$currency</td><td>$btc_est</td></tr>\n";
         }
+        $btc_sum=sprintf("%0.8F",$btc_sum);
+        $result.="<tr><th>Total</th><th></th><th></th><th>$btc_sum</th></tr>\n";
         $result.="</table>\n";
         $result.="</p>\n";
         return $result;
@@ -820,6 +848,7 @@ function html_user_assets($user_uid) {
 // Show user results
 function html_user_results($user_uid) {
         $result="";
+        $result.="<p><strong>Your results</strong></p>\n";
         $results_array=get_user_results($user_uid);
         if(!is_array($results_array) || count($results_array)==0) {
                 $result.="<p>Your have no results, try to start mining</p>\n";
@@ -919,7 +948,7 @@ function html_stats() {
                 SUM(p.`hashes`) AS `sum_hashes`,count(*) AS `count`,count(DISTINCT p.`user_uid`) AS `distinct_users`
                 FROM `payouts` AS p
                 JOIN `currency` AS c ON c.`currency_code`=p.`currency_code`
-                WHERE (p.`tx_id` <> '') AND `status` IN ('sent')
+                WHERE (p.`tx_id` <> '') AND `status` IN ('sent') AND DATE_SUB(NOW(),INTERVAL 1 MONTH)<p.`timestamp`
                 GROUP BY c.`currency_name`,p.`currency_code`
                 ORDER BY count(*) DESC");
 
@@ -938,6 +967,53 @@ function html_stats() {
                 $result.="<tr><td>$currency_name ($currency_code)</td><td>$sum_total</td><td>$sum_hashes</td><td>$count</td><td>$distinct_users</td></tr>\n";
         }
         $result.="</table>\n";
+        return $result;
+}
+
+function html_deposit($user_uid) {
+        global $token;
+        global $deposit_currencies;
+
+        $result="";
+
+        $result.="<h2>Deposit addresses</h2>\n";
+
+        $result.="<p>Max deposit size per day is equivalent for 0.01 BTC</p>\n";
+
+        $result.="<table class=data_table>\n";
+        $result.="<tr><th>Currency</th><th>Address</th><th>Received</th><th>Symbol</th></tr>\n";
+
+        foreach($deposit_currencies as $currency => $currency_name) {
+                $deposit_info=get_deposit_info($user_uid,$currency);
+
+                if(isset($deposit_info['uid'])) {
+                        $uid=$deposit_info['uid'];
+                        $address=$deposit_info['address'];
+                        if($address=='') {
+                                $address="<i>generating...</i>";
+                        } else {
+                                $address=html_address_link($currency,$address);
+                        }
+                        $received=$deposit_info['amount'];
+                } else {
+                        $address=<<<_END
+<form name=request_address method=post>
+<input type=hidden name=token value='$token'>
+<input type=hidden name=action value='request_deposit_address'>
+<input type=hidden name=currency value='$currency'>
+<input type=submit value=Request>
+</form>
+
+_END;
+                        $received=0;
+                }
+
+
+                $result.="<tr><td>$currency_name</td><td>$address</td><td>$received</td><td>$currency</td></tr>\n";
+        }
+
+        $result.="</table>\n";
+
         return $result;
 }
 
