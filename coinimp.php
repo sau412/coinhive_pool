@@ -31,9 +31,10 @@ function coinimp_get_user_balance_detail($asset,$address) {
         $result = curl_exec ($ch);
         if($result=="") return 0;
         $data=json_decode($result);
-        return $data->message;
-        //if(isset($data->balance) && $data->balance) return $data->balance;
-        //else return 0;
+        if($data!=NULL && $data!='' && is_object($data) && property_exists($data,"message"))
+                return $data->message;
+        else
+                return 0;
 }
 
 // Returns only balance
