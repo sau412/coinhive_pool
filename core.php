@@ -49,7 +49,9 @@ ON DUPLICATE KEY UPDATE `balance`=VALUES(`balance`)");
 // Get user assets
 function get_user_assets($user_uid) {
         $user_uid_escaped=db_escape($user_uid);
-        $assets_array=db_query_to_array("SELECT `currency`,`balance` FROM `assets` WHERE `user_uid`='$user_uid_escaped' AND `balance`>0");
+        $assets_array=db_query_to_array("SELECT c.`currency_name`,a.`currency`,a.`balance`,(a.`balance`*c.`btc_per_coin`) AS btc_est FROM `assets` AS a
+LEFT JOIN `currency` AS c ON c.`currency_code`=a.`currency`
+WHERE a.`user_uid`='$user_uid_escaped' AND a.`balance`>0");
         return $assets_array;
 }
 
@@ -132,7 +134,15 @@ function update_user_results($user_uid,$platform,$new_result) {
         $old_result=db_query_to_variable("SELECT `value` FROM `results` WHERE `user_uid`='$user_uid_escaped' AND `platform`='$platform_escaped'");
         if($old_result=='') $old_result=0;
         $result_diff=$new_result-$old_result;
-        if($result_diff<=0 || $new_result==0 || $new_result=='') return FALSE;
+        if($result_diff<=0 || $new_result==0 || $new_result=='') {
+                if($result_diff<0) {
+                        $coinhive_xmr_per_Mhash=get_variable("payoutPer1MHashes");
+                        $xmr_per_Mhash=0.99*get_variable("payoutPer1MHashes")/0.7;
+                        $xmr=$result_diff*$xmr_per_Mhash/1000000;
+                        write_log("Negative diff for user $user_uid platform $platform old result $old_result new result $new_result diff $result_diff xmr $xmr");
+                }
+                return FALSE;
+        }
         db_query("UPDATE `users` SET `timestamp`=NOW() WHERE `uid`='$user_uid_escaped'");
         db_query("INSERT INTO `results` (`user_uid`,`platform`,`value`) VALUES ('$user_uid_escaped','$platform_escaped','$new_result_escaped')
 ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
@@ -394,10 +404,10 @@ function user_withdraw($session,$user_uid,$currency_code,$payout_address,$paymen
 
                         $address_escaped=db_escape($payout_address);
                         $payment_id_escaped=db_escape($payment_id);
-                        $rate_per_mhash_escaped=db_escape($rate_per_mhash);
+                        // $rate_per_mhash_escaped=db_escape($rate_per_mhash);
                         $payout_fee_escaped=db_escape($payout_fee);
                         $project_fee_escaped=db_escape($project_fee);
-                        $hashes_escaped=db_escape($hashes_balance);
+                        // $hashes_escaped=db_escape($hashes_balance);
 
                         db_query("INSERT INTO `payouts` (`session`,`user_uid`,`currency_code`,`address`,`payment_id`,`amount`,`payout_fee`,`project_fee`,`total`,`status`)
 VALUES ('$session_escaped','$user_uid_escaped','$currency_code_escaped','$address_escaped','$payment_id_escaped','$amount_escaped','$payout_fee_escaped','$project_fee_escaped','$total_escaped','requested')");
@@ -517,10 +527,38 @@ function recaptcha_check($response) {
         else return FALSE;
 }
 
+function request_deposit_address($user_uid,$currency) {
+        $user_uid_escaped=db_escape($user_uid);
+        $currency_escaped=db_escape($currency);
+
+//      db_query("LOCK TABLES `deposits` WRITE");
+
+        $exists_uid=db_query_to_variable("SELECT `uid` FROM `deposits` WHERE `user_uid`='$user_uid_escaped' AND `currency`='$currency_escaped'");
+
+        if(!$exists_uid) {
+                db_query("INSERT INTO `deposits` (`user_uid`,`currency`) VALUES ('$user_uid_escaped','$currency_escaped')");
+                $exists_uid=mysql_insert_id();
+        }
+
+//      db_query("UNLOCK TABLES");
+
+        return $exists_uid;
+}
+
+function get_deposit_info($user_uid,$currency) {
+        $user_uid_escaped=db_escape($user_uid);
+        $currency_escaped=db_escape($currency);
+
+        $data=db_query_to_array("SELECT `uid`,`user_uid`,`currency`,`wallet_uid`,`address`,`amount`,`timestamp` FROM `deposits` WHERE `user_uid`='$user_uid_escaped' AND `currency`='$currency_escaped'");
+        $row=array_pop($data);
+        return $row;
+}
+
 // For php 5 only variant for random_bytes is openssl_random_pseudo_bytes from openssl lib
 if(!function_exists("random_bytes")) {
         function random_bytes($n) {
                 return openssl_random_pseudo_bytes($n);
         }
 }
+
 ?>
