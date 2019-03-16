@@ -15,16 +15,20 @@ body {
 }
 
 /* Table with coins*/
-.currency_grid td {
+td.currency_grid {
         border: 0;
         width: 100px;
         padding: 1em;
         text-align:center;
 }
-.currency_grid .currency_grid_withdrawable {
+.currency_grid:hover {
+        background-color:lightblue;
+        cursor:pointer;
+}
+.currency_grid_withdrawable {
         background-color:#DFD;
 }
-.currency_grid td:hover {
+.currency_grid_withdrawable:hover {
         background-color:lightblue;
         cursor:pointer;
 }
