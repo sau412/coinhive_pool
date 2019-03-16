@@ -9,15 +9,6 @@ require_once("html.php");
 require_once("captcha.php");
 
 // Only ASCII parameters allowed
-foreach($_GET as $key => $value) {
-        if(validate_ascii($key)==FALSE) die("Non-ASCII parameters disabled");
-        if(validate_ascii($value)==FALSE) die("Non-ASCII parameters disabled");
-}
-foreach($_POST as $key => $value) {
-        if(validate_ascii($key)==FALSE) die("Non-ASCII parameters disabled");
-        if(validate_ascii($value)==FALSE) die("Non-ASCII parameters disabled");
-}
-
 
 db_connect();
 
@@ -127,6 +118,10 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 $payout_uid=stripslashes($_POST['payout_uid']);
                 payout_cancel($user_uid,$payout_uid);
                 $message="";
+        } else if($logged_in==TRUE && $action=="request_deposit_address") {
+                $currency=stripslashes($_POST['currency']);
+                request_deposit_address($user_uid,$currency);
+                $message="Deposit address for $currency requested, it takes some time";
         } else if($logged_in==TRUE && $action=="withdraw") {
                 $currency_code=stripslashes($_POST['currency_code']);
                 $payout_address=stripslashes($_POST['payout_address']);
@@ -135,6 +130,7 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 else $payment_id='';
 
                 $message=user_withdraw($session,$user_uid,$currency_code,$payout_address,$payment_id);
+                $return_to="?part=deposit";
         } else if(is_admin($user_uid) && $action=='set_tx_id') {
                 $tx_id=stripslashes($_POST['tx_id']);
                 $payout_uid=stripslashes($_POST['payout_uid']);
@@ -169,14 +165,14 @@ if(isset($_GET['json'])) {
                 $old_hashes=get_user_hashes($user_uid);
 
                 //coinimp_get_reward_info();
-                $coinhive_balance=coinhive_get_user_balance($coinhive_id);
-                $coinimp_xmr_balance=coinimp_get_user_balance("xmr",$coinhive_id);
+                //$coinhive_balance=coinhive_get_user_balance($coinhive_id);
+                //$coinimp_xmr_balance=coinimp_get_user_balance("xmr",$coinhive_id);
                 $coinimp_web_balance=coinimp_get_user_balance("web",$coinhive_id);
 
                 //update_user_mined_balance($user_uid,$coinhive_balance);
 
-                update_user_results($user_uid,"Coinhive",$coinhive_balance);
-                update_user_results($user_uid,"Coinimp-XMR",$coinimp_xmr_balance);
+                //update_user_results($user_uid,"Coinhive",$coinhive_balance);
+                //update_user_results($user_uid,"Coinimp-XMR",$coinimp_xmr_balance);
                 update_user_results($user_uid,"Coinimp-WEB",$coinimp_web_balance);
 
                 $new_hashes=get_user_hashes($user_uid);
@@ -185,24 +181,30 @@ if(isset($_GET['json'])) {
 
                 //echo html_balance_detail_coinimp($user_uid,$coinimp_xmr_balance,$coinimp_web_balance);
 
-                echo html_results_and_assets($user_uid);
+                echo html_user_assets($user_uid);
+                //echo html_results_and_assets($user_uid);
 
                 // Common information
                 if($part=='') {
                         echo html_select_your_coin($user_uid);
+                } else if($part=="user_chat") {
+                        echo html_chat();
+                } else if($part=="user_stats") {
+                        // User results
+                        echo html_user_results($user_uid);
 
                         // Achievements
                         echo html_achievements_section($user_uid);
 
+                        // Global stats
+                        echo html_stats();
+                } else if($part=="payouts") {
+                        echo html_payouts_section($user_uid);
+                } else if($part=="deposit") {
+                        echo html_deposit($user_uid);
+                } else if($part=="settings") {
                         // User links
                         echo html_links_section($user_uid);
-
-                        // User payouts
-                        echo html_payouts_section($user_uid);
-                } else if($part=="user_chat") {
-                        echo html_chat();
-                } else if($part=="user_stats") {
-                        echo html_stats();
                 } else if(is_admin($user_uid) && $part=="admin_users") {
                         echo html_registered_users_admin();
                 } else if(is_admin($user_uid) && $part=="admin_payouts") {
@@ -211,15 +213,6 @@ if(isset($_GET['json'])) {
                         echo html_log_section_admin();
                 } else {
                         echo html_results_in_coin($user_uid,$part);
-
-                        // Achievements
-                        echo html_achievements_section($user_uid);
-
-                        // User links
-                        echo html_links_section($user_uid);
-
-                        // User payouts
-                        echo html_payouts_section($user_uid);
                 }
         }
 
@@ -239,19 +232,19 @@ if($logged_in) {
 
         //if($user_uid==99) echo html_message("Hi, lglazanl, accidentally I sent you 22477 RDD, can you send 90 % of them back, please? My address is RcWWAoto8z1CWxpgp69t2xL3Cg9Bj2Lx4c");
 
-        echo html_select_miner_form($user_uid);
+        //echo html_select_miner_form($user_uid);
 
         // Coinhive miner
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
 
         echo html_jsecoin_miner($coinhive_id);
 
-        if(isset($_GET['coinimp_web'])) {
-                echo html_coinimp_frame("web",$coinhive_id);
+        if(isset($_GET['coinhive'])) {
+                echo html_coinhive_frame($coinhive_id);
         } else if(isset($_GET['coinimp_xmr'])) {
                 echo html_coinimp_frame("xmr",$coinhive_id);
         } else {
-                echo html_coinhive_frame($coinhive_id);
+                echo html_coinimp_frame("web",$coinhive_id);
         }
 
         // Balance information
