@@ -144,4 +144,4 @@ CREATE TABLE IF NOT EXISTS `variables` (
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 DROP TABLE IF EXISTS `payout_stats`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`u0403486_hive`@`localhost` SQL SECURITY DEFINER VIEW `payout_stats` AS select `payouts`.`currency_code` AS `currency_code`,sum(`payouts`.`total`) AS `sum_total`,sum(`payouts`.`hashes`) AS `sum_hashes`,count(0) AS `acount`,count(distinct `payouts`.`user_uid`) AS `distinct_users` from `payouts` where (`payouts`.`tx_id` <> '') group by `payouts`.`currency_code`;
+CREATE VIEW `payout_stats` AS select `payouts`.`currency_code` AS `currency_code`,sum(`payouts`.`total`) AS `sum_total`,sum(`payouts`.`hashes`) AS `sum_hashes`,count(0) AS `acount`,count(distinct `payouts`.`user_uid`) AS `distinct_users` from `payouts` where (`payouts`.`tx_id` <> '') group by `payouts`.`currency_code`;
