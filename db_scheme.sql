@@ -33,7 +33,7 @@ CREATE TABLE `deposits` (
   `user_uid` int(11) NOT NULL,
   `currency` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `wallet_uid` int(11) DEFAULT NULL,
-  `address` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `address` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL,
   `amount` double NOT NULL DEFAULT '0',
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -66,7 +66,7 @@ CREATE TABLE `payouts` (
   `session` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `user_uid` int(11) NOT NULL,
   `currency_code` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
-  `address` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  `address` varchar(200) COLLATE utf8_unicode_ci NOT NULL,
   `payment_id` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   `hashes` int(11) NOT NULL DEFAULT '0',
   `rate_per_mhash` double NOT NULL DEFAULT '0',
@@ -87,13 +87,6 @@ CREATE TABLE `platforms` (
   `rate` double NOT NULL,
   `caption` varchar(100) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `platforms` (`uid`, `name`, `currency`, `rate`, `caption`) VALUES
-(1, 'local', 'XMR', 1, 'Bonus'),
-(2, 'coinhive', 'XMR', 1, 'Mined with coinhive'),
-(3, 'jsecoin', 'JSE', 1, 'Mined with JSE'),
-(4, 'coinimp-xmr', 'XMR', 1, 'Mined with coinimp (XMR)'),
-(5, 'coinimp-web', 'WEB', 1, 'Mined with coinimp (WEB)');
 
 CREATE TABLE `results` (
   `uid` int(11) NOT NULL,
