@@ -493,19 +493,20 @@ $captcha
 </form>
 
 _END;
-        $result.="<p>Disclaimer: this page embeds third-party script (coinhive), use it on your own risk.</p>";
+        $result.="<p>Disclaimer: this page embeds third-party script (coinimp), use it on your own risk.</p>";
         $result.="<p>Mine any supported coin online in the browser. Convert them into any another currency.</p>";
-        $result.="<p>Actual exchange rate is used. Fee depends on the coin. You can withdraw any amount above payout fee. Withdraw takes up to 24 hours.</p>";
+        $result.="<p>Actual exchange rate from coingecko is used. Fee depends on the coin. You can withdraw any amount above payout fee. Withdraw takes up to 24 hours.</p>";
         $result.="<p>If you want to add your favourite coin here, please contact <a href='mailto:sau412@gmail.com'>sau412@gmail.com</a></p>";
         $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_code` ASC");
 
         $result.="<h2>Supported coins</h2>\n";
         $result.="<p>Fee depends on the coin</p>\n";
-        $result.="<table class=currency_grid>\n";
-        $n=0;
+        $result.="<table class=data_table>\n";
+        $result.="<tr><th></th><th>Currency</th><th>Symbol</th><th>BTC per coin</th><th>Payout fee</th></tr>\n";
+        //$n=0;
         foreach($currency_data_array as $currency_data) {
-                if(($n%6)==0) $result.="</tr>\n<tr>\n";
-                $n++;
+                //if(($n%6)==0) $result.="</tr>\n<tr>\n";
+                //$n++;
                 $currency_code=$currency_data['currency_code'];
                 $currency_name=$currency_data['currency_name'];
                 $img_url=$currency_data['img_url'];
@@ -516,9 +517,19 @@ _END;
 
                 $total_fee=sprintf("%0.8f",$payout_fee+$project_fee);
 
-                $btc_per_coin=sprintf("%0.8f",$btc_per_coin);
+                if($btc_per_coin<=0.0000001) {
+                        $btc_per_coin=sprintf("%0.2f satoshi",$btc_per_coin*100000000);
+                } else {
+                        $btc_per_coin=sprintf("%0.8f BTC",$btc_per_coin);
+                }
 
-                $result.="<td><img src='$img_url'><br><strong>$currency_name</strong><br><small>$btc_per_coin BTC</small></td>\n";
+                if($total_fee==0) {
+                        $total_fee="No fee";
+                } else {
+                        $total_fee.=" ".$currency_code;
+                }
+
+                $result.="<tr class='currency_grid'><td><img src='$img_url'></td><td>$currency_name</td><td>$currency_code</td><td>$btc_per_coin</td><td>$total_fee</td></tr>\n";
                 }
 
         $result.="</table>\n";
@@ -556,7 +567,12 @@ function html_select_your_coin($user_uid) {
                 else $result_in_currency=0;
                 $total=$result_in_currency-$payout_fee-$project_fee;
 
-                $btc_per_coin=sprintf("%0.8F",$btc_per_coin);
+                if($btc_per_coin<=0.0000001) {
+                        $btc_per_coin=sprintf("%0.2f satoshi",$btc_per_coin*100000000);
+                } else {
+                        $btc_per_coin=sprintf("%0.8f BTC",$btc_per_coin);
+                }
+                //$btc_per_coin=sprintf("%0.8F",$btc_per_coin);
 
                 $result_in_currency=sprintf("%0.8f",$result_in_currency);
                 if($total>0) $total=sprintf("%0.8f",$total);
