@@ -51,7 +51,7 @@ function get_user_assets($user_uid) {
         $user_uid_escaped=db_escape($user_uid);
         $assets_array=db_query_to_array("SELECT c.`currency_name`,a.`currency`,a.`balance`,(a.`balance`*c.`btc_per_coin`) AS btc_est FROM `assets` AS a
 LEFT JOIN `currency` AS c ON c.`currency_code`=a.`currency`
-WHERE a.`user_uid`='$user_uid_escaped' AND a.`balance`>0");
+WHERE a.`user_uid`='$user_uid_escaped'");
         return $assets_array;
 }
 
