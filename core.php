@@ -169,6 +169,26 @@ ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
                 case 'JSECoin':
                         add_user_asset($user_uid,"JSE",$result_diff);
                         break;
+                case 'Freebitcoin':
+                        add_user_asset($user_uid,"BTC",$result_diff);
+                        break;
+                case 'Freedogecoin':
+                        add_user_asset($user_uid,"DOGE",$result_diff);
+                        break;
+        }
+}
+
+// Update user result id
+function update_user_result_id($user_uid,$platform,$new_id) {
+        $user_uid_escaped=db_escape($user_uid);
+        $platform_escaped=db_escape($platform);
+        $new_id_escaped=db_escape($new_id);
+
+        $exists=db_query_to_variable("SELECT 1 FROM `results` WHERE `platform`='$platform_escaped' AND `id`='$new_id_escaped'");
+
+        if(!$exists) {
+                db_query("INSERT INTO `results` (`user_uid`,`platform`,`id`,`value`) VALUES ('$user_uid_escaped','$platform_escaped','$new_id_escaped',0)
+ON DUPLICATE KEY UPDATE `id`=VALUES(`id`)");
         }
 }
 
