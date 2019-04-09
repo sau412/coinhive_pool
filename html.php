@@ -146,6 +146,8 @@ _END;
 
 // Page end, scripts and footer
 function html_page_end() {
+        global $token;
+        
         return <<<_END
 <input type=hidden id=do_not_update value='0'>
 <script>
@@ -160,15 +162,15 @@ function startup() {
 function refresh_data() {
         var part=document.getElementById('part').value;
         if(typeof xmr_update_stats === "function") {
-                for(var i=0;i!=60;i++)  setTimeout('xmr_update_stats()',1000*i);
+                for(var i=0;i!=600;i++)  setTimeout('xmr_update_stats()',1000*i);
         }
         if(typeof web_update_stats === "function") {
-                for(var i=0;i!=60;i++)  setTimeout('web_update_stats()',1000*i);
+                for(var i=0;i!=600;i++)  setTimeout('web_update_stats()',1000*i);
         }
         if(document.getElementById('do_not_update').value == '0') {
                 $('#mining_info').load('?json=1&part='+part);
         }
-        setTimeout('refresh_data()',60000);
+        setTimeout('refresh_data()',600000);
 }
 
 function refresh_balance(balance) {
@@ -186,6 +188,29 @@ function set_part(part) {
 function disable_auto_updates() {
         document.getElementById('do_not_update').value='1';
 }
+
+function enable_auto_updates() {
+        document.getElementById('do_not_update').value='0';
+}
+
+function send_chat_message() {
+    let message=document.getElementById('message').value;
+    let action='chat_message';
+    let token='$token';
+    
+    // Send message
+    $.post("./",{message:message,action:action,token:token},function() {
+        enable_auto_updates();
+        document.getElementById('message').value='';
+    });
+    
+    // Update chat block
+    var part=document.getElementById('part').value;
+    $('#mining_info').load('?json=1&part='+part);
+    
+    // Return false to prevent default action
+    return false;
+}
 </script>
 
 <hr width=10%>
@@ -201,6 +226,8 @@ _END;
 function html_links_section($user_uid) {
         global $pool_domain;
         global $coinhive_public_key;
+        global $freebitcoin_ref_link;
+        global $freedogecoin_ref_link;
 
         $user_uid_urlencoded=urlencode($user_uid);
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
@@ -208,22 +235,21 @@ function html_links_section($user_uid) {
         $result="";
         $result.="<h2>Your links</h2>\n";
         $result.="<p>Earn 1 % of hashes, mined by each your referral. Mine without logging in with miner link. Embed miner with data-key and data-user.</p>\n";
+        $result.="<p>Register in freebitco.in and freedoge.co.in faucets with ref links, write your withdraw address in settings tab,<br>";
+        $result.="and earn 50 % bonuses in your hivepool account for each roll (updated daily)</p>\n";
         $result.="<table class=data_table>\n";
         $ref_link="https://$pool_domain/?ref=$user_uid_urlencoded";
         $miner_link="https://$pool_domain/?miner=$user_uid_urlencoded";
         $miner_coinimp_web_link="https://$pool_domain/?miner_coinimp_web=$user_uid_urlencoded";
         $miner_coinimp_xmr_link="https://$pool_domain/?miner_coinimp_xmr=$user_uid_urlencoded";
-        $embedded_miner=<<<_END
-<script src="https://authedmine.com/lib/simple-ui.min.js" async></script><div class="coinhive-miner" data-key="$coinhive_public_key" data-user="$coinhive_id"><em>Loading...</em></div>
-_END;
-        $embedded_miner_html=html_escape($embedded_miner);
         $result.="<tr><th align=right>Your referral link:</th><td><input type=text size=50 value='$ref_link'></td>\n";
         //$result.="<tr><th align=right>Your coinhive miner link:</th><td><input type=text size=50 value='$miner_link'></td>\n";
         //$result.="<tr><th align=right>Your coinhive data-key:</th><td><input type=text size=50 value='$coinhive_public_key'></td>\n";
         //$result.="<tr><th align=right>Your coinhive data-user:</th><td><input type=text size=50 value='$coinhive_id'></td>\n";
-        $result.="<tr><th align=right>Your coinimp WMR miner link:</th><td><input type=text size=50 value='$miner_coinimp_xmr_link'></td>\n";
+        //$result.="<tr><th align=right>Your coinimp XMR miner link:</th><td><input type=text size=50 value='$miner_coinimp_xmr_link'></td>\n";
         $result.="<tr><th align=right>Your coinimp WEB miner link:</th><td><input type=text size=50 value='$miner_coinimp_web_link'></td>\n";
-        //$result.="<tr><th align=right>Sample embedded miner:</th><td><input type=text size=50 value='$embedded_miner_html'></td>\n";
+        $result.="<tr><th align=right>Freebitco.in ref link:</th><td><input type=text size=50 value='$freebitcoin_ref_link'></td>\n";
+        $result.="<tr><th align=right>Freedoge.co.in ref link:</th><td><input type=text size=50 value='$freedogecoin_ref_link'></td>\n";
         $result.="</table>\n";
         return $result;
 }
@@ -497,7 +523,7 @@ _END;
         $result.="<p>Mine any supported coin online in the browser. Convert them into any another currency.</p>";
         $result.="<p>Actual exchange rate from coingecko is used. Fee depends on the coin. You can withdraw any amount above payout fee. Withdraw takes up to 24 hours.</p>";
         $result.="<p>If you want to add your favourite coin here, please contact <a href='mailto:sau412@gmail.com'>sau412@gmail.com</a></p>";
-        $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_code` ASC");
+        $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_name` ASC");
 
         $result.="<h2>Supported coins</h2>\n";
         $result.="<p>Fee depends on the coin</p>\n";
@@ -518,7 +544,7 @@ _END;
                 $total_fee=sprintf("%0.8f",$payout_fee+$project_fee);
 
                 if($btc_per_coin<=0.0000001) {
-                        $btc_per_coin=sprintf("%0.2f satoshi",$btc_per_coin*100000000);
+                        $btc_per_coin=sprintf("%0.6f satoshi",$btc_per_coin*100000000);
                 } else {
                         $btc_per_coin=sprintf("%0.8f BTC",$btc_per_coin);
                 }
@@ -545,7 +571,7 @@ function html_select_your_coin($user_uid) {
         $user_btc=get_user_assets_btc($user_uid);
 
         $result="";
-        $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_code` ASC");
+        $currency_data_array=db_query_to_array("SELECT `currency_code`,`currency_name`,`payout_fee`,`project_fee`,`btc_per_coin`,`img_url`,`payment_id_field` FROM `currency` WHERE `enabled`=1 ORDER BY `currency_name` ASC");
 
         $result.="<h2>Select your coin:</h2>\n";
         $result.="<table class=data_table>\n";
@@ -563,12 +589,21 @@ function html_select_your_coin($user_uid) {
                 $project_fee=$currency_data['project_fee'];
                 $payment_id_field=$currency_data['payment_id_field'];
 
+                $total_fee=$payout_fee+$project_fee;
+
                 if($btc_per_coin>0) $result_in_currency=$user_btc/$btc_per_coin;
                 else $result_in_currency=0;
                 $total=$result_in_currency-$payout_fee-$project_fee;
 
+                $result_in_btc=($result_in_currency-$total_fee)*$btc_per_coin;
+                if($result_in_btc>0) {
+                        $result_in_btc=sprintf("%0.8F",$result_in_btc);
+                } else {
+                        $result_in_btc="below fee";
+                }
+
                 if($btc_per_coin<=0.0000001) {
-                        $btc_per_coin=sprintf("%0.2f satoshi",$btc_per_coin*100000000);
+                        $btc_per_coin=sprintf("%0.6f satoshi",$btc_per_coin*100000000);
                 } else {
                         $btc_per_coin=sprintf("%0.8f BTC",$btc_per_coin);
                 }
@@ -577,9 +612,6 @@ function html_select_your_coin($user_uid) {
                 $result_in_currency=sprintf("%0.8f",$result_in_currency);
                 if($total>0) $total=sprintf("%0.8f",$total);
                 else $total=sprintf("below fee",$total);
-
-                $result_in_btc=$result_in_currency*$btc_per_coin;
-                $result_in_btc=sprintf("%0.8F",$result_in_btc);
 
                 if($total>0) {
                         $result.="<tr class='currency_grid_withdrawable' onClick=\"set_part('$currency_code')\">";
@@ -763,7 +795,8 @@ function html_welcome_logout_form($user_uid) {
 
 function html_select_miner_form($user_uid) {
         global $token;
-        return "<p>Select your miner: <a href='?coinimp_xmr'>Monero</a>, <a href='?coinimp_web'>Webchain</a></p>\n";
+        return "";
+        //return "<p>Select your miner: <a href='?coinimp_xmr'>Monero</a>, <a href='?coinimp_web'>Webchain</a></p>\n";
 }
 
 function html_balance_big($user_uid) {
@@ -790,7 +823,7 @@ if (document.getElementById('balance_shown') !== null) {
         for(var i=1;i<=intervals;i++) {
                 var balance=Math.floor(balance_begin+i*balance_diff/intervals);
                 if (typeof refresh_balance === "function") {
-                        setTimeout(refresh_balance,i*60000/intervals,balance);
+                        setTimeout(refresh_balance,i*600000/intervals,balance);
                 }
         }
         document.getElementById('balance_shown').value=eval('$user_hashes_prev');
@@ -919,10 +952,10 @@ ORDER BY m.`timestamp` DESC LIMIT 20");
                 $result.="<p>[$timestamp] <strong>&lt;$username_html&gt;</strong> $message_html</p>\n";
         }
         $result.="</div>\n";
-        $result.="<form name=send_message method=post>\n";
+        $result.="<form name=send_message method=post onSubmit='return send_chat_message();'>\n";
         $result.="<input type=hidden name=action value=chat_message>\n";
         $result.="<input type=hidden name=token value=$token>\n";
-        $result.="<input type=text size=50 maxlength=500 name=message onFocus='disable_auto_updates();'>\n";
+        $result.="<input type=text size=50 maxlength=500 name=message onFocus='disable_auto_updates();' id='message'>\n";
         $result.="<input type=submit value=send>\n";
         $result.="</form>\n";
         $result.="</div>\n";
@@ -933,7 +966,7 @@ ORDER BY m.`timestamp` DESC LIMIT 20");
 // Stats
 function html_stats() {
         $result="";
-
+/*
         $result.="<h2>Pool stats</h2>\n";
         $result.="<table class='data_table'>\n";
 
@@ -959,7 +992,7 @@ function html_stats() {
         $result.="<tr><th>Global difficulty</th><td>$global_difficulty</td></tr>\n";
         $result.="<tr><th>Global block reward</th><td>$block_reward XMR</td></tr>\n";
         $result.="</table>\n";
-
+*/
         $payouts_data=db_query_to_array("SELECT c.`currency_name`,p.`currency_code`,SUM(p.`total`) AS `sum_total`,
                 SUM(p.`hashes`) AS `sum_hashes`,count(*) AS `count`,count(DISTINCT p.`user_uid`) AS `distinct_users`
                 FROM `payouts` AS p
@@ -1030,6 +1063,27 @@ _END;
 
         $result.="</table>\n";
 
+        return $result;
+}
+
+function html_settings($user_uid) {
+        global $token;
+
+        $result="";
+
+        $result.="<h2>Settings</h2>\n";
+
+        $user_uid_escaped=db_escape($user_uid);
+        $freebitcoin_address=db_query_to_variable("SELECT `id` FROM `results` WHERE `user_uid`='$user_uid_escaped' AND `platform`='Freebitcoin'");
+        $freedogecoin_address=db_query_to_variable("SELECT `id` FROM `results` WHERE `user_uid`='$user_uid_escaped' AND `platform`='Freedogecoin'");
+
+        $freebitcoin_address_html=htmlspecialchars($freebitcoin_address);
+        $result.="<p><form name=freebitcoin_address method=post><input type=hidden name=action value='freebitcoin_address'><input type=hidden name=token value='$token'>";
+        $result.="Freebitco.in address: <input type=text name=address value='$freebitcoin_address_html' size=40> <input type=submit value='Update'></form></p>\n";
+
+        $freedogecoin_address_html=htmlspecialchars($freedogecoin_address);
+        $result.="<p><form name=freedogecoin_address method=post><input type=hidden name=action value='freedogecoin_address'><input type=hidden name=token value='$token'>";
+        $result.="Freedoge.co.in address: <input type=text name=address value='$freedogecoin_address_html' size=40> <input type=submit value='Update'></form></p>\n";
         return $result;
 }
 
