@@ -25,8 +25,13 @@ if(isset($_GET['miner'])) {
         $user_uid=stripslashes($_GET['miner_coinimp_web']);
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
         $miner_form=html_coinimp_frame("web",$coinhive_id);
-        echo '<link rel="stylesheet" type="text/css" href="style.css">';
+        echo "<link rel='stylesheet' type='text/css' href='style.css'>\n";
         echo $miner_form;
+        if(isset($_GET['autostart'])) {
+                $autostart='web_client.start();';
+        } else {
+                $autostart='';
+        }
         echo <<<_END
 <script>
 update_stats_repeat();
@@ -34,9 +39,11 @@ function update_stats_repeat() {
         web_update_stats();
         setTimeout('update_stats_repeat()',1000);
 }
+$autostart
 </script>
 _END;
         die();
+
 } else if(isset($_GET['miner_coinimp_xmr'])) {
         $user_uid=stripslashes($_GET['miner_coinimp_xmr']);
         $coinhive_id=get_coinhive_id_by_user_uid($user_uid);
@@ -122,6 +129,14 @@ if(isset($_POST['action']) || isset($_GET['action'])) {
                 $currency=stripslashes($_POST['currency']);
                 request_deposit_address($user_uid,$currency);
                 $message="Deposit address for $currency requested, it takes some time";
+        } else if($logged_in==TRUE && $action=="freebitcoin_address") {
+                $user_id=stripslashes($_POST['address']);
+                update_user_result_id($user_uid,"Freebitcoin",$user_id);
+                $message="Address for freebitco.in ref reward is set";
+        } else if($logged_in==TRUE && $action=="freedogecoin_address") {
+                $user_id=stripslashes($_POST['address']);
+                update_user_result_id($user_uid,"Freedogecoin",$user_id);
+                $message="Address for freedoge.co.in ref reward is set";
         } else if($logged_in==TRUE && $action=="withdraw") {
                 $currency_code=stripslashes($_POST['currency_code']);
                 $payout_address=stripslashes($_POST['payout_address']);
@@ -204,6 +219,7 @@ if(isset($_GET['json'])) {
                         echo html_deposit($user_uid);
                 } else if($part=="settings") {
                         // User links
+                        echo html_settings($user_uid);
                         echo html_links_section($user_uid);
                 } else if(is_admin($user_uid) && $part=="admin_users") {
                         echo html_registered_users_admin();
